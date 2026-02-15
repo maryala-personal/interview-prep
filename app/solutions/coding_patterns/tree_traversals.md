@@ -1,1715 +1,1032 @@
-# Tree Traversals Pattern
+# Tree Traversals — Complete Interview Guide
 
-## What are Tree Traversals?
+## When to Use This Pattern
 
-### Explain Like I'm 5
-Imagine you have a family tree with grandparents, parents, and children. Tree traversal is like visiting everyone in your family, but you need to decide the ORDER in which you visit them:
-- Do you visit grandparents first, then parents, then kids? (top to bottom)
-- Do you visit all people on the same level together? (level by level)
-- Do you visit the left side of the family before the right side?
+### Signals That Point to Tree Techniques
+1. **Hierarchical data** — the input is a tree or can be modeled as one (DOM, file system, org chart).
+2. **"For every node, compute something based on its children or subtree"** — post-order processing pattern.
+3. **Serialization / deserialization** — converting a tree to a string and back.
+4. **Path problems** — find paths with specific sums, longest paths, or paths between specific nodes.
+5. **BST property** — the problem involves sorted order in a tree (validate BST, find kth smallest, range queries).
+6. **Level-by-level processing** — BFS over tree levels (right side view, zigzag traversal).
 
-Just like there are different ways to visit your family members, there are different ways to visit nodes in a tree!
+### When NOT to Use
+- If the structure is a general graph with cycles — use graph algorithms (BFS/DFS with visited set).
+- If you need the shortest path in a weighted graph — use Dijkstra, not tree DFS.
+- If the data is flat and unstructured — trees add unnecessary complexity.
 
-### Technical Definition
-Tree traversal is the process of visiting each node in a tree data structure exactly once in a systematic way. The main traversal strategies differ in the order in which they visit nodes:
-- **Depth-First Search (DFS)**: Explores as far down a branch as possible before backtracking
-  - Inorder (Left → Root → Right)
-  - Preorder (Root → Left → Right)
-  - Postorder (Left → Right → Root)
-- **Breadth-First Search (BFS)**: Explores all nodes at the current level before moving to the next level
-  - Level Order (level by level, left to right)
+---
 
-## Real-World Analogy
+## Core Mechanics
 
-### File System Navigation
-Think of your computer's file system:
+### Tree Fundamentals
+A binary tree is a recursive structure: each node has at most two children. The key **invariant** is that there are no cycles, so every recursive call processes a strictly smaller subproblem.
+
 ```
-/root
-  /Documents
-    /Work
-      report.pdf
-    /Personal
-      photo.jpg
-  /Downloads
-    song.mp3
+        1
+       / \
+      2   3
+     / \   \
+    4   5   6
 ```
 
-Different traversals represent different ways to explore files:
-- **Preorder (Root → Left → Right)**: Like a "top-down" folder listing
-  - Visit `/root` first, then explore `/Documents`, then `/Downloads`
-  - Useful for copying a directory structure
+**Types of binary trees**:
+- **Full**: Every node has 0 or 2 children.
+- **Complete**: All levels filled except possibly the last, which is filled left to right.
+- **Perfect**: All internal nodes have 2 children, all leaves at same level.
+- **BST**: For every node, all values in the left subtree < node < all values in right subtree.
+- **Balanced**: Height is O(log n). Examples: AVL, Red-Black trees.
 
-- **Inorder (Left → Root → Right)**: For a Binary Search Tree
-  - Gives you files in sorted alphabetical order
-  - Like sorting all files alphabetically regardless of folder
+### Traversal Orders
+The four fundamental traversals differ in when you "visit" the current node relative to its children:
 
-- **Postorder (Left → Right → Root)**: Like calculating disk space
-  - Calculate size of child folders first, then parent
-  - Useful for deleting directories (delete contents before directory itself)
-
-- **Level Order**: Like viewing files by depth
-  - First see `/root`, then all top-level folders, then their contents
-  - Useful for finding the shortest path or nearest file
-
-### Organization Chart
-An org chart is another tree:
 ```
-        CEO
-       /   \
-    CTO     CFO
-    / \     / \
-  Dev Ops Acc HR
+        1
+       / \
+      2   3
+     / \
+    4   5
 ```
-- **Preorder**: CEO announces something, then managers pass it down (top-down communication)
-- **Postorder**: Employees report to managers, managers report to CEO (bottom-up reporting)
-- **Level Order**: Annual all-hands meeting by seniority level
 
-## When to Use
+| Traversal | Order | Result | Use Case |
+|-----------|-------|--------|----------|
+| Pre-order | root, left, right | 1,2,4,5,3 | Serialize/copy tree, prefix expression |
+| In-order | left, root, right | 4,2,5,1,3 | BST gives sorted order |
+| Post-order | left, right, root | 4,5,2,3,1 | Delete tree, compute subtree properties |
+| Level-order | level by level | 1,2,3,4,5 | BFS, right side view, level averages |
 
-### Clear Signals for Tree Problems
-Use tree traversal patterns when you see:
+### Why Post-Order Matters for "Gather Info from Children"
+Many tree problems follow this pattern: to compute something for the current node, you first need results from both children. This is naturally post-order:
+1. Recurse left — get left result.
+2. Recurse right — get right result.
+3. Combine left and right results to compute current node's answer.
 
-1. **Data Structure Clues**:
-   - Problem mentions "binary tree", "BST", "tree node"
-   - Hierarchical data (file system, org chart, XML/HTML DOM)
-   - Parent-child relationships
+Examples: tree height, diameter, max path sum, balanced check, subtree sum.
 
-2. **Operation Clues**:
-   - "Visit all nodes"
-   - "Search for a value"
-   - "Print/collect nodes in specific order"
-   - "Find path from root to node"
-   - "Calculate tree properties" (height, diameter, sum)
+### Complexity
+- **Time**: O(n) for any complete traversal — we visit every node exactly once.
+- **Space**: O(h) for recursive traversal (call stack) where h is height. O(h) = O(log n) balanced, O(n) skewed.
+- **Morris traversal**: O(n) time, O(1) space — uses threaded binary trees.
 
-3. **Traversal Type Signals**:
-   - **Inorder**: BST problems, getting sorted order
-   - **Preorder**: Creating a copy, serialization, prefix expressions
-   - **Postorder**: Deletion, calculating properties from children, postfix expressions
-   - **Level Order**: Shortest path, level-wise operations, BFS problems
+---
 
-4. **Problem Keywords**:
-   - "Left to right", "level by level" → Level Order
-   - "Sorted order" (in BST) → Inorder
-   - "Top-down" → Preorder
-   - "Bottom-up", "children first" → Postorder
+## The Templates
 
-## The Problems
-
-### Core Traversal Problems
-
-#### 1. Inorder Traversal (Left → Root → Right)
-**Use Case**: Get nodes in sorted order for BST, check if tree is BST
-
+### Python — Recursive Traversals
 ```python
-# Definition for a binary tree node
 class TreeNode:
     def __init__(self, val=0, left=None, right=None):
         self.val = val
         self.left = left
         self.right = right
 
-# Recursive Approach
-def inorderTraversal(root: TreeNode) -> list[int]:
-    """
-    Inorder traversal: Left → Root → Right
-    Time: O(n) - visit each node once
-    Space: O(h) - recursion stack height
-    """
-    result = []
-
-    def inorder(node):
-        if not node:
-            return
-
-        # First, traverse left subtree
-        inorder(node.left)
-
-        # Then, visit root (process current node)
-        result.append(node.val)
-
-        # Finally, traverse right subtree
-        inorder(node.right)
-
-    inorder(root)
-    return result
-
-# Iterative Approach using Stack
-def inorderTraversalIterative(root: TreeNode) -> list[int]:
-    """
-    Iterative inorder using explicit stack
-    Time: O(n)
-    Space: O(h) - stack space
-
-    Key insight: Keep going left until we can't, then process node,
-    then go right once. This mimics the recursive call stack.
-    """
-    result = []
-    stack = []
-    current = root
-
-    while current or stack:
-        # Go as far left as possible
-        while current:
-            stack.append(current)
-            current = current.left
-
-        # Process the leftmost unprocessed node
-        current = stack.pop()
-        result.append(current.val)
-
-        # Move to right subtree
-        current = current.right
-
-    return result
-```
-
-#### 2. Preorder Traversal (Root → Left → Right)
-**Use Case**: Create copy of tree, serialize tree, evaluate prefix expressions
-
-```python
-# Recursive Approach
-def preorderTraversal(root: TreeNode) -> list[int]:
-    """
-    Preorder traversal: Root → Left → Right
-    Time: O(n)
-    Space: O(h)
-    """
-    result = []
-
-    def preorder(node):
-        if not node:
-            return
-
-        # First, visit root (process current node)
-        result.append(node.val)
-
-        # Then, traverse left subtree
-        preorder(node.left)
-
-        # Finally, traverse right subtree
-        preorder(node.right)
-
-    preorder(root)
-    return result
-
-# Iterative Approach using Stack
-def preorderTraversalIterative(root: TreeNode) -> list[int]:
-    """
-    Iterative preorder using stack
-    Time: O(n)
-    Space: O(h)
-
-    Key insight: Process node immediately when we see it,
-    then push right child first (so left is processed first)
-    """
+def preorder(root: TreeNode) -> list:
     if not root:
         return []
+    return [root.val] + preorder(root.left) + preorder(root.right)
 
-    result = []
-    stack = [root]
+def inorder(root: TreeNode) -> list:
+    if not root:
+        return []
+    return inorder(root.left) + [root.val] + inorder(root.right)
 
+def postorder(root: TreeNode) -> list:
+    if not root:
+        return []
+    return postorder(root.left) + postorder(root.right) + [root.val]
+```
+
+### Python — Iterative Traversals
+```python
+def preorder_iterative(root: TreeNode) -> list:
+    if not root:
+        return []
+    result, stack = [], [root]
     while stack:
-        # Pop and process current node
         node = stack.pop()
         result.append(node.val)
-
-        # Push right first so left is processed first (LIFO)
-        if node.right:
+        if node.right:  # push right first so left is processed first
             stack.append(node.right)
         if node.left:
             stack.append(node.left)
-
-    return result
-```
-
-#### 3. Postorder Traversal (Left → Right → Root)
-**Use Case**: Delete tree, calculate properties that depend on children
-
-```python
-# Recursive Approach
-def postorderTraversal(root: TreeNode) -> list[int]:
-    """
-    Postorder traversal: Left → Right → Root
-    Time: O(n)
-    Space: O(h)
-    """
-    result = []
-
-    def postorder(node):
-        if not node:
-            return
-
-        # First, traverse left subtree
-        postorder(node.left)
-
-        # Then, traverse right subtree
-        postorder(node.right)
-
-        # Finally, visit root (process current node)
-        result.append(node.val)
-
-    postorder(root)
     return result
 
-# Iterative Approach using Two Stacks
-def postorderTraversalIterative(root: TreeNode) -> list[int]:
-    """
-    Iterative postorder using two stacks
-    Time: O(n)
-    Space: O(h)
+def inorder_iterative(root: TreeNode) -> list:
+    result, stack = [], []
+    curr = root
+    while curr or stack:
+        while curr:            # go as far left as possible
+            stack.append(curr)
+            curr = curr.left
+        curr = stack.pop()     # backtrack
+        result.append(curr.val)
+        curr = curr.right      # move to right subtree
+    return result
 
-    Key insight: Use two stacks. First stack does reverse postorder
-    (Root → Right → Left), second stack reverses it back.
-    """
+def postorder_iterative(root: TreeNode) -> list:
     if not root:
         return []
-
-    stack1 = [root]
-    stack2 = []
-
-    # Populate stack2 with reverse postorder
-    while stack1:
-        node = stack1.pop()
-        stack2.append(node)
-
-        # Push left first, then right (opposite of preorder)
-        if node.left:
-            stack1.append(node.left)
-        if node.right:
-            stack1.append(node.right)
-
-    # Pop from stack2 to get correct postorder
-    result = []
-    while stack2:
-        result.append(stack2.pop().val)
-
-    return result
-
-# Alternative: Iterative with One Stack (More Complex)
-def postorderTraversalOneStack(root: TreeNode) -> list[int]:
-    """
-    Iterative postorder with one stack
-    Time: O(n)
-    Space: O(h)
-
-    Track last visited node to know if we're coming back from right child
-    """
-    if not root:
-        return []
-
-    result = []
-    stack = []
-    current = root
-    last_visited = None
-
-    while current or stack:
-        # Go to leftmost node
-        while current:
-            stack.append(current)
-            current = current.left
-
-        # Peek at top of stack
-        peek_node = stack[-1]
-
-        # If right child exists and not yet processed
-        if peek_node.right and last_visited != peek_node.right:
-            current = peek_node.right
-        else:
-            # Process this node
-            result.append(peek_node.val)
-            last_visited = stack.pop()
-
-    return result
-```
-
-#### 4. Level Order Traversal (BFS)
-**Use Case**: Find shortest path, level-wise operations, print tree by levels
-
-```python
-from collections import deque
-
-def levelOrder(root: TreeNode) -> list[list[int]]:
-    """
-    Level order traversal using BFS with queue
-    Time: O(n) - visit each node once
-    Space: O(w) - where w is max width of tree
-
-    Returns list of lists, where each inner list is one level
-    """
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-
-    while queue:
-        level_size = len(queue)  # Number of nodes at current level
-        current_level = []
-
-        # Process all nodes at current level
-        for _ in range(level_size):
-            node = queue.popleft()
-            current_level.append(node.val)
-
-            # Add children for next level
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
-
-        result.append(current_level)
-
-    return result
-
-def levelOrderFlat(root: TreeNode) -> list[int]:
-    """
-    Level order traversal returning flat list
-    Time: O(n)
-    Space: O(w)
-    """
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-
-    while queue:
-        node = queue.popleft()
-        result.append(node.val)
-
-        if node.left:
-            queue.append(node.left)
-        if node.right:
-            queue.append(node.right)
-
-    return result
-```
-
-### Key Tree Problems Using Traversals
-
-#### 5. Lowest Common Ancestor (LCA)
-**Pattern**: Postorder traversal (need info from children)
-
-```python
-def lowestCommonAncestor(root: TreeNode, p: TreeNode, q: TreeNode) -> TreeNode:
-    """
-    Find lowest common ancestor of two nodes
-    Time: O(n) - might visit all nodes
-    Space: O(h) - recursion stack
-
-    Key insight: Use postorder logic - check children first.
-    If we find both p and q in different subtrees, current node is LCA.
-    """
-    # Base case: empty tree or found one of the target nodes
-    if not root or root == p or root == q:
-        return root
-
-    # Search in left and right subtrees (postorder: children first)
-    left = lowestCommonAncestor(root.left, p, q)
-    right = lowestCommonAncestor(root.right, p, q)
-
-    # If both left and right found something, current node is LCA
-    if left and right:
-        return root
-
-    # Otherwise, return whichever side found something (or None)
-    return left if left else right
-
-# For BST, we can optimize using BST property
-def lowestCommonAncestorBST(root: TreeNode, p: TreeNode, q: TreeNode) -> TreeNode:
-    """
-    LCA in BST using BST properties
-    Time: O(h) - only traverse one path
-    Space: O(1) - iterative solution
-    """
-    while root:
-        # Both p and q are smaller - LCA is in left subtree
-        if p.val < root.val and q.val < root.val:
-            root = root.left
-        # Both p and q are larger - LCA is in right subtree
-        elif p.val > root.val and q.val > root.val:
-            root = root.right
-        else:
-            # Split point found - current node is LCA
-            return root
-
-    return None
-```
-
-#### 6. Validate Binary Search Tree
-**Pattern**: Inorder traversal (should give sorted order)
-
-```python
-def isValidBST(root: TreeNode) -> bool:
-    """
-    Validate if tree is a valid BST
-    Time: O(n)
-    Space: O(h)
-
-    Method 1: Inorder traversal should give sorted order
-    """
-    prev = [None]  # Use list to maintain reference across recursion
-
-    def inorder(node):
-        if not node:
-            return True
-
-        # Check left subtree
-        if not inorder(node.left):
-            return False
-
-        # Check current node against previous
-        if prev[0] is not None and node.val <= prev[0]:
-            return False
-        prev[0] = node.val
-
-        # Check right subtree
-        return inorder(node.right)
-
-    return inorder(root)
-
-def isValidBSTRange(root: TreeNode) -> bool:
-    """
-    Method 2: Use valid range for each node
-    Time: O(n)
-    Space: O(h)
-
-    Each node must be within a valid range [min_val, max_val]
-    """
-    def validate(node, min_val, max_val):
-        if not node:
-            return True
-
-        # Current node must be within range
-        if node.val <= min_val or node.val >= max_val:
-            return False
-
-        # Left subtree: all values must be < node.val
-        # Right subtree: all values must be > node.val
-        return (validate(node.left, min_val, node.val) and
-                validate(node.right, node.val, max_val))
-
-    return validate(root, float('-inf'), float('inf'))
-```
-
-#### 7. Binary Tree Maximum Path Sum
-**Pattern**: Postorder (need info from children to make decision)
-
-```python
-def maxPathSum(root: TreeNode) -> int:
-    """
-    Find maximum path sum in binary tree
-    Path can start and end at any node
-    Time: O(n)
-    Space: O(h)
-
-    Key insight: For each node, max path through it is:
-    node.val + max_gain(left) + max_gain(right)
-    But we can only return one branch to parent
-    """
-    max_sum = [float('-inf')]  # Use list to maintain reference
-
-    def max_gain(node):
-        """Returns max sum of path starting at this node going down"""
-        if not node:
-            return 0
-
-        # Get max gain from left and right (ignore negative gains)
-        left_gain = max(max_gain(node.left), 0)
-        right_gain = max(max_gain(node.right), 0)
-
-        # Calculate max path sum through current node
-        path_sum = node.val + left_gain + right_gain
-
-        # Update global maximum
-        max_sum[0] = max(max_sum[0], path_sum)
-
-        # Return max gain continuing to parent (can only pick one branch)
-        return node.val + max(left_gain, right_gain)
-
-    max_gain(root)
-    return max_sum[0]
-```
-
-#### 8. Serialize and Deserialize Binary Tree
-**Pattern**: Preorder for serialization, reconstruct using preorder logic
-
-```python
-def serialize(root: TreeNode) -> str:
-    """
-    Serialize tree to string using preorder traversal
-    Time: O(n)
-    Space: O(n)
-    """
-    def preorder(node):
-        if not node:
-            return ["null"]
-
-        # Preorder: Root → Left → Right
-        return ([str(node.val)] +
-                preorder(node.left) +
-                preorder(node.right))
-
-    return ",".join(preorder(root))
-
-def deserialize(data: str) -> TreeNode:
-    """
-    Deserialize string to tree
-    Time: O(n)
-    Space: O(n)
-    """
-    def build_tree(nodes):
-        val = next(nodes)
-
-        if val == "null":
-            return None
-
-        # Preorder: create root, then left, then right
-        node = TreeNode(int(val))
-        node.left = build_tree(nodes)
-        node.right = build_tree(nodes)
-
-        return node
-
-    nodes = iter(data.split(","))
-    return build_tree(nodes)
-```
-
-## Brute Force Approach
-
-### When Brute Force Applies
-Tree traversal problems don't typically have a "brute force" in the traditional sense, but there are inefficient approaches:
-
-1. **Using Multiple Passes**:
-   - Instead of calculating everything in one traversal, making multiple passes
-   - Example: Finding height and diameter in separate traversals
-
-2. **Not Using Appropriate Data Structures**:
-   - Using array instead of queue for level order
-   - Not using stack for iterative DFS
-
-3. **Excessive Memory Usage**:
-   - Storing entire traversal in memory when only need to check property
-   - Creating new lists for each recursive call instead of passing accumulator
-
-### Example: Finding Tree Height (Inefficient vs Efficient)
-
-```python
-# Inefficient: Multiple traversals
-def getHeight(root: TreeNode) -> int:
-    """This works but is less elegant"""
-    if not root:
-        return 0
-
-    # Count all nodes in left and right
-    left_count = countNodes(root.left)
-    right_count = countNodes(root.right)
-
-    # This doesn't actually give height, showing bad logic
-    return 1 + max(left_count, right_count)
-
-def countNodes(node):
-    if not node:
-        return 0
-    return 1 + countNodes(node.left) + countNodes(node.right)
-
-# Efficient: Single traversal
-def maxDepth(root: TreeNode) -> int:
-    """
-    Calculate height in single postorder traversal
-    Time: O(n)
-    Space: O(h)
-    """
-    if not root:
-        return 0
-
-    # Get height from children, then calculate for current
-    left_height = maxDepth(root.left)
-    right_height = maxDepth(root.right)
-
-    return 1 + max(left_height, right_height)
-```
-
-## Optimized Solutions
-
-### Morris Traversal (O(1) Space)
-**Ultimate Optimization**: Traverse tree without recursion or stack
-
-```python
-def morrisInorder(root: TreeNode) -> list[int]:
-    """
-    Morris Inorder Traversal - O(1) space
-    Time: O(n) - each edge visited at most twice
-    Space: O(1) - only using pointers, no stack/recursion
-
-    Key idea: Use the tree itself as the stack by creating
-    temporary links (threaded tree)
-    """
-    result = []
-    current = root
-
-    while current:
-        if not current.left:
-            # No left subtree, process current and go right
-            result.append(current.val)
-            current = current.right
-        else:
-            # Find inorder predecessor (rightmost node in left subtree)
-            predecessor = current.left
-            while predecessor.right and predecessor.right != current:
-                predecessor = predecessor.right
-
-            if not predecessor.right:
-                # Create temporary link (thread)
-                predecessor.right = current
-                current = current.left
-            else:
-                # We've already visited left subtree, remove thread
-                predecessor.right = None
-                result.append(current.val)
-                current = current.right
-
-    return result
-
-def morrisPreorder(root: TreeNode) -> list[int]:
-    """
-    Morris Preorder Traversal - O(1) space
-    Time: O(n)
-    Space: O(1)
-    """
-    result = []
-    current = root
-
-    while current:
-        if not current.left:
-            result.append(current.val)
-            current = current.right
-        else:
-            predecessor = current.left
-            while predecessor.right and predecessor.right != current:
-                predecessor = predecessor.right
-
-            if not predecessor.right:
-                # Process node BEFORE going left (preorder)
-                result.append(current.val)
-                predecessor.right = current
-                current = current.left
-            else:
-                predecessor.right = None
-                current = current.right
-
-    return result
-```
-
-### Vertical Order Traversal
-**Advanced Pattern**: Combine BFS with coordinate tracking
-
-```python
-from collections import defaultdict, deque
-
-def verticalOrder(root: TreeNode) -> list[list[int]]:
-    """
-    Vertical order traversal using BFS
-    Time: O(n log n) - due to sorting columns
-    Space: O(n)
-
-    Each node has (row, col) coordinate
-    Nodes in same column go together, sorted by row
-    """
-    if not root:
-        return []
-
-    # Map column index to list of (row, value) pairs
-    column_table = defaultdict(list)
-    queue = deque([(root, 0, 0)])  # (node, row, col)
-
-    while queue:
-        node, row, col = queue.popleft()
-        column_table[col].append((row, node.val))
-
-        if node.left:
-            queue.append((node.left, row + 1, col - 1))
-        if node.right:
-            queue.append((node.right, row + 1, col + 1))
-
-    # Sort columns and build result
-    result = []
-    for col in sorted(column_table.keys()):
-        # Sort by row within each column
-        column_table[col].sort()
-        result.append([val for row, val in column_table[col]])
-
-    return result
-```
-
-### Tree Construction from Traversals
-
-```python
-def buildTreeFromInorderPreorder(preorder: list[int], inorder: list[int]) -> TreeNode:
-    """
-    Construct tree from inorder and preorder traversal
-    Time: O(n)
-    Space: O(n)
-
-    Key insight:
-    - First element of preorder is root
-    - Find root in inorder to split left/right subtrees
-    - Recursively build left and right
-    """
-    if not preorder or not inorder:
-        return None
-
-    # Build map for O(1) lookup of root index in inorder
-    inorder_map = {val: idx for idx, val in enumerate(inorder)}
-
-    def build(pre_start, pre_end, in_start, in_end):
-        if pre_start > pre_end:
-            return None
-
-        # First element in preorder is root
-        root_val = preorder[pre_start]
-        root = TreeNode(root_val)
-
-        # Find root position in inorder
-        root_index = inorder_map[root_val]
-        left_size = root_index - in_start
-
-        # Build left and right subtrees
-        root.left = build(
-            pre_start + 1,
-            pre_start + left_size,
-            in_start,
-            root_index - 1
-        )
-        root.right = build(
-            pre_start + left_size + 1,
-            pre_end,
-            root_index + 1,
-            in_end
-        )
-
-        return root
-
-    return build(0, len(preorder) - 1, 0, len(inorder) - 1)
-
-def buildTreeFromInorderPostorder(inorder: list[int], postorder: list[int]) -> TreeNode:
-    """
-    Construct tree from inorder and postorder traversal
-    Time: O(n)
-    Space: O(n)
-
-    Key insight:
-    - Last element of postorder is root
-    - Find root in inorder to split left/right subtrees
-    """
-    if not inorder or not postorder:
-        return None
-
-    inorder_map = {val: idx for idx, val in enumerate(inorder)}
-
-    def build(in_start, in_end, post_start, post_end):
-        if in_start > in_end:
-            return None
-
-        # Last element in postorder is root
-        root_val = postorder[post_end]
-        root = TreeNode(root_val)
-
-        root_index = inorder_map[root_val]
-        left_size = root_index - in_start
-
-        root.left = build(
-            in_start,
-            root_index - 1,
-            post_start,
-            post_start + left_size - 1
-        )
-        root.right = build(
-            root_index + 1,
-            in_end,
-            post_start + left_size,
-            post_end - 1
-        )
-
-        return root
-
-    return build(0, len(inorder) - 1, 0, len(postorder) - 1)
-```
-
-## Time & Space Complexity Analysis
-
-### Recursive Traversals
-
-| Traversal Type | Time Complexity | Space Complexity | Notes |
-|----------------|-----------------|------------------|-------|
-| Inorder (Recursive) | O(n) | O(h) | h = height, worst case O(n) for skewed tree |
-| Preorder (Recursive) | O(n) | O(h) | Same as inorder |
-| Postorder (Recursive) | O(n) | O(h) | Same as inorder |
-
-- **Time**: O(n) because we visit each node exactly once
-- **Space**: O(h) for recursion stack
-  - Best case: O(log n) for balanced tree
-  - Worst case: O(n) for completely skewed tree
-
-### Iterative Traversals
-
-| Traversal Type | Time Complexity | Space Complexity | Notes |
-|----------------|-----------------|------------------|-------|
-| Inorder (Iterative) | O(n) | O(h) | Explicit stack instead of call stack |
-| Preorder (Iterative) | O(n) | O(h) | Same space as recursive |
-| Postorder (Iterative) | O(n) | O(h) | May use two stacks |
-| Level Order (BFS) | O(n) | O(w) | w = max width of tree |
-
-- **Level Order Space**: O(w) where w is maximum width
-  - For balanced tree: O(n/2) ≈ O(n) at last level
-  - For skewed tree: O(1) only one node per level
-
-### Morris Traversal
-
-| Traversal Type | Time Complexity | Space Complexity | Notes |
-|----------------|-----------------|------------------|-------|
-| Morris Inorder | O(n) | O(1) | No extra space! |
-| Morris Preorder | O(n) | O(1) | No extra space! |
-
-- **Time**: Still O(n) even though we visit some edges twice
-- **Space**: O(1) constant space, only pointers
-- **Trade-off**: More complex code, temporarily modifies tree structure
-
-### Complex Operations
-
-| Operation | Time Complexity | Space Complexity |
-|-----------|-----------------|------------------|
-| LCA (Binary Tree) | O(n) | O(h) |
-| LCA (BST) | O(h) | O(1) iterative |
-| Validate BST | O(n) | O(h) |
-| Max Path Sum | O(n) | O(h) |
-| Serialize/Deserialize | O(n) | O(n) |
-| Build from Traversals | O(n) | O(n) |
-| Vertical Order | O(n log n) | O(n) |
-
-## Variations
-
-### 1. Recursive vs Iterative
-
-```python
-# When to use each:
-
-# Recursive:
-# ✅ Cleaner, more intuitive code
-# ✅ Natural for tree problems
-# ✅ Easy to understand and maintain
-# ❌ Can cause stack overflow for very deep trees
-# ❌ Harder to pause/resume traversal
-
-def recursiveExample(root):
-    def traverse(node):
-        if not node:
-            return
-        # Process node
-        traverse(node.left)
-        traverse(node.right)
-
-    traverse(root)
-
-# Iterative:
-# ✅ No stack overflow risk
-# ✅ Can pause/resume traversal
-# ✅ More control over execution
-# ❌ More complex code
-# ❌ Need to manage explicit stack/queue
-
-def iterativeExample(root):
-    if not root:
-        return
-
-    stack = [root]
+    result, stack = [], [root]
     while stack:
         node = stack.pop()
-        # Process node
-        if node.right:
-            stack.append(node.right)
+        result.append(node.val)
         if node.left:
             stack.append(node.left)
-```
-
-### 2. Reverse Order Traversals
-
-```python
-def reverseLevelOrder(root: TreeNode) -> list[list[int]]:
-    """
-    Level order from bottom to top
-    Time: O(n), Space: O(n)
-    """
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-
-    while queue:
-        level_size = len(queue)
-        level = []
-
-        for _ in range(level_size):
-            node = queue.popleft()
-            level.append(node.val)
-
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
-
-        result.append(level)
-
-    # Reverse the result
-    return result[::-1]
-
-def zigzagLevelOrder(root: TreeNode) -> list[list[int]]:
-    """
-    Zigzag (alternating left-to-right, right-to-left)
-    Time: O(n), Space: O(n)
-    """
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-    left_to_right = True
-
-    while queue:
-        level_size = len(queue)
-        level = []
-
-        for _ in range(level_size):
-            node = queue.popleft()
-            level.append(node.val)
-
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
-
-        # Reverse every other level
-        if not left_to_right:
-            level.reverse()
-
-        result.append(level)
-        left_to_right = not left_to_right
-
-    return result
-```
-
-### 3. Boundary Traversal
-
-```python
-def boundaryTraversal(root: TreeNode) -> list[int]:
-    """
-    Print boundary of tree: left boundary, leaves, right boundary
-    Time: O(n), Space: O(h)
-    """
-    if not root:
-        return []
-
-    result = [root.val]
-
-    def is_leaf(node):
-        return node and not node.left and not node.right
-
-    def add_left_boundary(node):
-        """Add left boundary (excluding leaves)"""
-        while node:
-            if not is_leaf(node):
-                result.append(node.val)
-
-            if node.left:
-                node = node.left
-            else:
-                node = node.right
-
-    def add_leaves(node):
-        """Add all leaves (inorder)"""
-        if not node:
-            return
-
-        add_leaves(node.left)
-
-        if is_leaf(node):
-            result.append(node.val)
-
-        add_leaves(node.right)
-
-    def add_right_boundary(node):
-        """Add right boundary in reverse (excluding leaves)"""
-        temp = []
-        while node:
-            if not is_leaf(node):
-                temp.append(node.val)
-
-            if node.right:
-                node = node.right
-            else:
-                node = node.left
-
-        # Add in reverse order
-        result.extend(reversed(temp))
-
-    if not is_leaf(root):
-        add_left_boundary(root.left)
-        add_leaves(root)
-        add_right_boundary(root.right)
-
-    return result
-```
-
-### 4. Right/Left Side View
-
-```python
-def rightSideView(root: TreeNode) -> list[int]:
-    """
-    View tree from right side (rightmost node at each level)
-    Time: O(n), Space: O(h)
-    """
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-
-    while queue:
-        level_size = len(queue)
-
-        for i in range(level_size):
-            node = queue.popleft()
-
-            # Last node in level is rightmost
-            if i == level_size - 1:
-                result.append(node.val)
-
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
-
-    return result
-
-def leftSideView(root: TreeNode) -> list[int]:
-    """
-    View tree from left side (leftmost node at each level)
-    Time: O(n), Space: O(h)
-    """
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-
-    while queue:
-        level_size = len(queue)
-
-        for i in range(level_size):
-            node = queue.popleft()
-
-            # First node in level is leftmost
-            if i == 0:
-                result.append(node.val)
-
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
-
-    return result
-```
-
-## Pro Tips for Senior Engineers
-
-### 1. Choosing the Right Traversal
-
-**Decision Framework:**
-
-- **Inorder (Left → Root → Right)**
-  - Use when: Working with BST and need sorted order
-  - Examples: Validate BST, find kth smallest, BST iterator
-  - Binary operator evaluation: (left operand) operator (right operand)
-
-- **Preorder (Root → Left → Right)**
-  - Use when: Need to create copy or serialize tree
-  - Examples: Clone tree, serialize, prefix expression evaluation
-  - Top-down operations: parent info needed before children
-
-- **Postorder (Left → Right → Root)**
-  - Use when: Need info from children before processing parent
-  - Examples: Delete tree, calculate height/diameter, postfix expressions
-  - Bottom-up operations: child results needed to calculate parent
-
-- **Level Order (BFS)**
-  - Use when: Need to process by levels or find shortest path
-  - Examples: Right side view, zigzag traversal, minimum depth
-  - Level-wise operations: same-depth nodes together
-
-### 2. Space Optimization Techniques
-
-```python
-# Technique 1: Use iterators/generators for large trees
-def inorder_generator(root):
-    """
-    Yields nodes one at a time instead of storing all in memory
-    Useful for huge trees where you only need to process nodes one by one
-    """
-    stack = []
-    current = root
-
-    while current or stack:
-        while current:
-            stack.append(current)
-            current = current.left
-
-        current = stack.pop()
-        yield current.val  # Yield instead of append
-        current = current.right
-
-# Usage: for val in inorder_generator(root): process(val)
-
-# Technique 2: Morris traversal for O(1) space
-# Use when: Memory is extremely limited
-# Trade-off: More complex code, modifies tree temporarily
-
-# Technique 3: Tail recursion optimization (language-dependent)
-# Python doesn't optimize tail recursion, but concept is important
-```
-
-### 3. Edge Cases to Always Check
-
-```python
-def robustTraversal(root):
-    """Template showing all edge cases"""
-
-    # Edge case 1: Null tree
-    if not root:
-        return []
-
-    # Edge case 2: Single node
-    if not root.left and not root.right:
-        return [root.val]
-
-    # Edge case 3: Only left child (skewed tree)
-    # Edge case 4: Only right child (skewed tree)
-    # Your traversal logic should handle these naturally
-
-    # Edge case 5: Negative values
-    # Don't assume all values are positive!
-
-    # Edge case 6: Duplicate values
-    # Tree may have duplicate values
-
-    result = []
-    # ... traversal logic
-    return result
-```
-
-### 4. DFS vs BFS: Making the Choice
-
-```python
-# Use DFS (recursive or with stack) when:
-# 1. Solution is deep in the tree
-# 2. Tree is very wide (level order would use too much space)
-# 3. Backtracking is needed
-# 4. Need to explore all paths
-
-# Use BFS (with queue) when:
-# 1. Solution is close to root
-# 2. Need shortest path
-# 3. Level-wise processing required
-# 4. Tree is very deep (avoid stack overflow)
-
-# Example: Find minimum depth
-def minDepthBFS(root):
-    """
-    BFS is better here because we can return as soon as we find first leaf
-    No need to explore entire tree
-    """
-    if not root:
-        return 0
-
-    queue = deque([(root, 1)])
-
-    while queue:
-        node, depth = queue.popleft()
-
-        # First leaf we encounter is at minimum depth
-        if not node.left and not node.right:
-            return depth
-
-        if node.left:
-            queue.append((node.left, depth + 1))
         if node.right:
-            queue.append((node.right, depth + 1))
-
-    return 0
-
-def minDepthDFS(root):
-    """
-    DFS is less efficient here - must explore all paths
-    """
-    if not root:
-        return 0
-
-    if not root.left:
-        return 1 + minDepthDFS(root.right)
-    if not root.right:
-        return 1 + minDepthDFS(root.left)
-
-    return 1 + min(minDepthDFS(root.left), minDepthDFS(root.right))
+            stack.append(node.right)
+    return result[::-1]  # reverse of modified pre-order (root, right, left)
 ```
 
-### 5. Handling Tree Modifications
-
+### Python — Level-Order (BFS)
 ```python
-# When modifying tree during traversal:
-# 1. Be careful with iterative approaches (can lose references)
-# 2. Consider making copy if original tree needs to be preserved
-# 3. Watch out for cycles if creating links (like Morris traversal)
-
-def deleteNode(root, key):
-    """
-    Example: Safely delete node from BST
-    Always return new root (might change)
-    """
-    if not root:
-        return None
-
-    if key < root.val:
-        root.left = deleteNode(root.left, key)
-    elif key > root.val:
-        root.right = deleteNode(root.right, key)
-    else:
-        # Node found - handle three cases
-        if not root.left:
-            return root.right
-        if not root.right:
-            return root.left
-
-        # Node has two children: find inorder successor
-        min_node = root.right
-        while min_node.left:
-            min_node = min_node.left
-
-        root.val = min_node.val
-        root.right = deleteNode(root.right, min_node.val)
-
-    return root
-```
-
-### 6. Testing Strategies
-
-```python
-# Always test with these tree shapes:
-
-# 1. Empty tree
-test_tree_1 = None
-
-# 2. Single node
-test_tree_2 = TreeNode(1)
-
-# 3. Left-skewed tree
-#     1
-#    /
-#   2
-#  /
-# 3
-
-# 4. Right-skewed tree
-# 1
-#  \
-#   2
-#    \
-#     3
-
-# 5. Complete binary tree
-#       1
-#     /   \
-#    2     3
-#   / \   / \
-#  4   5 6   7
-
-# 6. Tree with only left children at some nodes
-#       1
-#      / \
-#     2   3
-#    /
-#   4
-
-# 7. Tree with negative values
-#      -1
-#     /  \
-#   -2   -3
-
-# 8. Tree with duplicates
-#      1
-#     / \
-#    1   1
-```
-
-## Problem Recognition
-
-### Identifying Tree Traversal Problems
-
-**Ask yourself these questions:**
-
-1. **Is data hierarchical?** → Likely a tree problem
-   - Organization charts, file systems, expression trees, DOM structure
-
-2. **Do I need to visit all nodes?** → Need a traversal strategy
-   - Decide which traversal based on required order
-
-3. **Do I need information from children?** → Postorder or bottom-up
-   - Height, diameter, tree validity, subtree sums
-
-4. **Do I need to process top-down?** → Preorder
-   - Copying, serialization, path sums
-
-5. **Is it a BST?** → Consider inorder for sorted order
-   - Validation, kth smallest/largest, range queries
-
-6. **Do I need level-wise processing?** → Level order (BFS)
-   - Minimum depth, level sums, zigzag, width
-
-7. **Do I need to find a path?** → DFS with backtracking
-   - Root to leaf paths, path sum, LCA
-
-### Problem Pattern Categories
-
-| Pattern | Traversal Type | Examples |
-|---------|----------------|----------|
-| Tree Properties | Postorder | Height, diameter, balanced check |
-| Tree Validation | Inorder | Validate BST, find duplicates |
-| Tree Construction | Preorder | Clone tree, serialize |
-| Path Finding | DFS Backtracking | Path sum, root to leaf paths |
-| Level Operations | Level Order (BFS) | Right side view, zigzag |
-| Node Relationships | DFS/BFS | LCA, distance between nodes |
-| Tree Modification | Choose based on operation | Delete, insert, flatten |
-
-### Keywords That Signal Tree Traversals
-
-- **"All nodes"** → Need complete traversal
-- **"Sorted order"** (BST) → Inorder
-- **"Level by level"** → Level order (BFS)
-- **"Top to bottom"** → Preorder
-- **"Bottom to top"** → Postorder
-- **"Shortest"** → BFS
-- **"All paths"** → DFS with backtracking
-- **"Serialize"** → Usually preorder
-- **"From leaves"** → Postorder
-
-## Practice Problems
-
-### Beginner Level
-1. **Binary Tree Inorder Traversal** (LeetCode 94)
-   - Practice: Basic recursive and iterative inorder
-   - Concepts: Stack usage, recursion basics
-
-2. **Maximum Depth of Binary Tree** (LeetCode 104)
-   - Practice: Simple postorder traversal
-   - Concepts: Bottom-up calculation
-
-3. **Same Tree** (LeetCode 100)
-   - Practice: Preorder traversal comparison
-   - Concepts: Simultaneous traversal of two trees
-
-### Intermediate Level
-4. **Binary Tree Level Order Traversal** (LeetCode 102)
-   - Practice: BFS with queue
-   - Concepts: Level-wise processing
-
-5. **Lowest Common Ancestor of BST** (LeetCode 235)
-   - Practice: BST properties
-   - Concepts: Optimization using BST characteristics
-
-6. **Validate Binary Search Tree** (LeetCode 98)
-   - Practice: Inorder traversal or range checking
-   - Concepts: BST validation, multiple approaches
-
-7. **Serialize and Deserialize Binary Tree** (LeetCode 297)
-   - Practice: Preorder traversal, string manipulation
-   - Concepts: Tree encoding/decoding, delimiter handling
-
-### Advanced Level
-8. **Binary Tree Maximum Path Sum** (LeetCode 124)
-   - Practice: Postorder with global state
-   - Concepts: Complex bottom-up calculation
-
-9. **Vertical Order Traversal** (LeetCode 987)
-   - Practice: BFS with coordinate tracking
-   - Concepts: Multi-dimensional sorting, hashmap usage
-
-10. **Morris Inorder Traversal** (No specific LeetCode number)
-    - Practice: O(1) space traversal
-    - Concepts: Threaded binary tree, space optimization
-
-### Bonus: Comprehensive Problem
-11. **All Nodes Distance K in Binary Tree** (LeetCode 863)
-    - Practice: Tree as graph, BFS from arbitrary node
-    - Concepts: Parent pointers, bidirectional traversal
-
-## Common Mistakes
-
-### 1. Confusing Traversal Orders
-```python
-# ❌ Wrong: Mixing up traversal orders
-def confusedTraversal(root):
-    if not root:
-        return
-
-    # Trying to do inorder but processing root first (this is preorder!)
-    result.append(root.val)  # Processing too early
-    confusedTraversal(root.left)
-    confusedTraversal(root.right)
-
-# ✅ Correct: Clear about what order you're using
-def correctInorder(root, result):
-    if not root:
-        return
-
-    correctInorder(root.left, result)   # Left first
-    result.append(root.val)             # Then root
-    correctInorder(root.right, result)  # Then right
-```
-
-### 2. Not Handling Empty Tree
-```python
-# ❌ Wrong: Assuming tree exists
-def buggyCode(root):
-    result = [root.val]  # Crash if root is None!
-    # ...
-
-# ✅ Correct: Always check for None
-def safeCode(root):
-    if not root:
-        return []
-
-    result = [root.val]
-    # ...
-```
-
-### 3. Forgetting to Return Updated Root
-```python
-# ❌ Wrong: Modifying tree but not returning
-def buggyDelete(root, val):
-    if not root:
-        return None
-
-    if root.val == val:
-        return root.right  # Return new root
-
-    buggyDelete(root.left, val)  # Bug: not updating root.left!
-    return root
-
-# ✅ Correct: Always update and return
-def correctDelete(root, val):
-    if not root:
-        return None
-
-    if root.val == val:
-        return root.right
-
-    root.left = correctDelete(root.left, val)  # Update left
-    root.right = correctDelete(root.right, val)  # Update right
-    return root
-```
-
-### 4. Using Wrong Data Structure for BFS
-```python
-# ❌ Wrong: Using list as queue (inefficient)
-def slowBFS(root):
-    queue = [root]
-    while queue:
-        node = queue.pop(0)  # O(n) operation! Bad!
-        # ...
-
-# ✅ Correct: Use deque for O(1) popleft
 from collections import deque
 
-def fastBFS(root):
-    queue = deque([root])
-    while queue:
-        node = queue.popleft()  # O(1) operation!
-        # ...
-```
-
-### 5. Not Tracking Level in Level Order
-```python
-# ❌ Wrong: Can't separate levels
-def wrongLevelOrder(root):
+def level_order(root: TreeNode) -> list:
     if not root:
         return []
-
     result = []
     queue = deque([root])
-
     while queue:
-        node = queue.popleft()
-        result.append(node.val)  # All values in one list!
-
-        if node.left:
-            queue.append(node.left)
-        if node.right:
-            queue.append(node.right)
-
-    return result  # Returns flat list, not list of levels
-
-# ✅ Correct: Track level size
-def correctLevelOrder(root):
-    if not root:
-        return []
-
-    result = []
-    queue = deque([root])
-
-    while queue:
-        level_size = len(queue)  # Key: track current level size
-        current_level = []
-
-        for _ in range(level_size):  # Process entire level
+        level = []
+        for _ in range(len(queue)):
             node = queue.popleft()
-            current_level.append(node.val)
-
+            level.append(node.val)
             if node.left:
                 queue.append(node.left)
             if node.right:
                 queue.append(node.right)
-
-        result.append(current_level)  # Add level as separate list
-
+        result.append(level)
     return result
 ```
 
-### 6. Incorrect BST Validation
+### Python — Morris In-Order Traversal (O(1) Space)
 ```python
-# ❌ Wrong: Only checking immediate children
-def wrongValidation(root):
-    if not root:
-        return True
-
-    # Bug: Only checks immediate children, not entire subtree
-    if root.left and root.left.val >= root.val:
-        return False
-    if root.right and root.right.val <= root.val:
-        return False
-
-    return wrongValidation(root.left) and wrongValidation(root.right)
-
-# Problem: Tree like this passes but is invalid BST:
-#       5
-#      / \
-#     3   7
-#    / \
-#   1   6  <- 6 > 5, violates BST property!
-
-# ✅ Correct: Use range validation
-def correctValidation(root, min_val=float('-inf'), max_val=float('inf')):
-    if not root:
-        return True
-
-    # Check if current value is within valid range
-    if root.val <= min_val or root.val >= max_val:
-        return False
-
-    # Left subtree: all values must be < root.val
-    # Right subtree: all values must be > root.val
-    return (correctValidation(root.left, min_val, root.val) and
-            correctValidation(root.right, root.val, max_val))
+def morris_inorder(root: TreeNode) -> list:
+    """O(n) time, O(1) space in-order traversal using threaded binary tree."""
+    result = []
+    curr = root
+    while curr:
+        if not curr.left:
+            # No left subtree — visit current, move right
+            result.append(curr.val)
+            curr = curr.right
+        else:
+            # Find in-order predecessor (rightmost in left subtree)
+            pred = curr.left
+            while pred.right and pred.right != curr:
+                pred = pred.right
+            if not pred.right:
+                # First visit: create thread back to curr
+                pred.right = curr
+                curr = curr.left
+            else:
+                # Second visit: remove thread, visit curr
+                pred.right = None
+                result.append(curr.val)
+                curr = curr.right
+    return result
 ```
 
-### 7. Modifying Tree During Iteration
+**How Morris Traversal Works**: Instead of using a stack, we temporarily modify the tree by creating "threads" — right pointers from the in-order predecessor back to the current node. This lets us return to the current node after processing its left subtree. We visit each edge at most twice (once to create the thread, once to remove it), so it is O(n) time. After traversal, the tree is restored to its original shape.
+
+### Python — Post-Order DFS Template (Gather from Children)
 ```python
-# ❌ Wrong: Modifying tree while iterating
-def dangerousIteration(root):
-    if not root:
-        return
+def solve(root: TreeNode) -> int:
+    """Template for problems that gather info from children."""
+    def dfs(node):
+        if not node:
+            return BASE_CASE  # e.g., 0 for height, True for valid
 
-    stack = [root]
-    while stack:
-        node = stack.pop()
+        left_result = dfs(node.left)
+        right_result = dfs(node.right)
 
-        # Danger: Modifying tree structure while iterating
-        if node.left:
-            node.left = None  # Could lose references!
-            stack.append(node.left)  # Appending None!
-        # ...
+        # Process current node using children's results
+        current_result = COMBINE(left_result, right_result, node.val)
 
-# ✅ Correct: Be careful with modifications
-def safeIteration(root):
-    if not root:
-        return
+        # Optionally update a global answer
+        # nonlocal ans
+        # ans = max(ans, SOME_FUNCTION(left_result, right_result))
 
-    stack = [root]
-    while stack:
-        node = stack.pop()
+        return current_result
 
-        # Save references before modifying
-        left_child = node.left
-        right_child = node.right
-
-        # Now safe to modify
-        if left_child:
-            stack.append(left_child)
-        if right_child:
-            stack.append(right_child)
+    # ans = INITIAL_VALUE
+    dfs(root)
+    # return ans
 ```
 
-### 8. Not Considering Unbalanced Trees
-```python
-# ❌ Wrong: Assuming tree is balanced
-def assumingBalanced(root):
-    # Using recursion without considering depth
-    # For skewed tree with 10,000 nodes, this will
-    # cause stack overflow!
-    if not root:
-        return 0
-    return 1 + max(assumingBalanced(root.left),
-                   assumingBalanced(root.right))
+### Go — Core Templates
+```go
+type TreeNode struct {
+    Val   int
+    Left  *TreeNode
+    Right *TreeNode
+}
 
-# ✅ Correct: Use iterative for deep trees
-def handleUnbalanced(root):
-    if not root:
-        return 0
+func inorderIterative(root *TreeNode) []int {
+    var result []int
+    var stack []*TreeNode
+    curr := root
+    for curr != nil || len(stack) > 0 {
+        for curr != nil {
+            stack = append(stack, curr)
+            curr = curr.Left
+        }
+        curr = stack[len(stack)-1]
+        stack = stack[:len(stack)-1]
+        result = append(result, curr.Val)
+        curr = curr.Right
+    }
+    return result
+}
 
-    max_depth = 0
-    stack = [(root, 1)]
-
-    while stack:
-        node, depth = stack.pop()
-        max_depth = max(max_depth, depth)
-
-        if node.left:
-            stack.append((node.left, depth + 1))
-        if node.right:
-            stack.append((node.right, depth + 1))
-
-    return max_depth
+func levelOrder(root *TreeNode) [][]int {
+    if root == nil {
+        return nil
+    }
+    var result [][]int
+    queue := []*TreeNode{root}
+    for len(queue) > 0 {
+        size := len(queue)
+        var level []int
+        for i := 0; i < size; i++ {
+            node := queue[0]
+            queue = queue[1:]
+            level = append(level, node.Val)
+            if node.Left != nil {
+                queue = append(queue, node.Left)
+            }
+            if node.Right != nil {
+                queue = append(queue, node.Right)
+            }
+        }
+        result = append(result, level)
+    }
+    return result
+}
 ```
 
 ---
 
-## Summary
+## Variant Subpatterns
 
-**Tree Traversals** are fundamental to working with hierarchical data. Master these key points:
+### 1. Top-Down DFS (Pre-Order Style)
+Pass information DOWN from parent to children. The parent tells each child what it needs to know.
+- Example: "Is this BST valid?" — pass the valid range [min, max] down.
+- Example: root-to-leaf path sum — pass the running sum down.
 
-1. **Choose the right traversal** for your problem:
-   - Inorder → sorted order for BST
-   - Preorder → top-down, copying, serialization
-   - Postorder → bottom-up, deletion, calculating from children
-   - Level Order → level-wise, shortest path
+### 2. Bottom-Up DFS (Post-Order Style)
+Gather information UP from children to parent. Each node computes its answer from its children's answers.
+- Example: Tree height — `1 + max(left_height, right_height)`.
+- Example: Diameter — max path through any node, where path through node = left_height + right_height.
+- Example: Max path sum — can include or exclude the node as a turning point.
 
-2. **Understand time/space trade-offs**:
-   - Recursive: cleaner but O(h) space
-   - Iterative: more control, same space but explicit stack
-   - Morris: O(1) space but complex and modifies tree
+### 3. BST Exploitation
+In a BST, in-order traversal gives sorted values. This unlocks:
+- **Validation**: ensure in-order is strictly increasing.
+- **Kth smallest**: in-order traversal, return the kth element.
+- **Range queries**: prune branches that fall outside the range.
+- **Successor/predecessor**: follow right then go all the way left, or vice versa.
 
-3. **Always handle edge cases**: empty tree, single node, skewed trees, negative values
+### 4. Level-Order Variants
+- **Right side view**: take the last element of each level.
+- **Zigzag**: alternate left-to-right and right-to-left per level.
+- **Level averages/max**: aggregate each level.
+- **Connect next pointers**: link nodes at the same level.
 
-4. **Choose DFS vs BFS** based on tree shape and where solution likely exists
+### 5. Tree Construction
+Build a tree from traversal arrays:
+- **Preorder + Inorder**: preorder's first element is root; find it in inorder to split left/right subtrees.
+- **Postorder + Inorder**: postorder's last element is root.
+- **Preorder alone (BST)**: use the BST property to determine subtree boundaries.
 
-5. **Practice both recursive and iterative** approaches for flexibility
+---
 
-Master tree traversals and you'll handle any tree problem with confidence!
+## Problem Walkthroughs
+
+---
+
+### Problem: Invert Binary Tree (LC #226) — Easy
+**Companies**: Google, Meta, Amazon — the famous "Homebrew guy" problem.
+
+**Problem**: Invert a binary tree (mirror it: swap left and right children at every node).
+
+```
+Input:       Output:
+    4            4
+   / \          / \
+  2   7        7   2
+ / \ / \      / \ / \
+1  3 6  9    9  6 3  1
+```
+
+**Brute Force**: There is no real brute force — this IS the simplest approach. Every solution visits all nodes.
+
+**Key Insight**: At every node, swap its left and right children, then recursively invert both subtrees. This is a pre-order traversal where the "visit" action is swapping children.
+
+**Optimal Solution — Recursive**:
+```python
+def invert_tree(root: TreeNode) -> TreeNode:
+    if not root:
+        return None
+    # Swap children
+    root.left, root.right = root.right, root.left
+    # Recursively invert subtrees
+    invert_tree(root.left)
+    invert_tree(root.right)
+    return root
+```
+Time: O(n), Space: O(h) for recursion stack.
+
+**Optimal Solution — Iterative (BFS)**:
+```python
+from collections import deque
+
+def invert_tree_iterative(root: TreeNode) -> TreeNode:
+    if not root:
+        return None
+    queue = deque([root])
+    while queue:
+        node = queue.popleft()
+        node.left, node.right = node.right, node.left
+        if node.left:
+            queue.append(node.left)
+        if node.right:
+            queue.append(node.right)
+    return root
+```
+
+**Dry Run** with the example tree:
+```
+Start: root = 4
+Swap children of 4: left=7, right=2
+Recurse on 7: swap children -> left=9, right=6
+Recurse on 9: leaf, no children to swap
+Recurse on 6: leaf, no children to swap
+Recurse on 2: swap children -> left=3, right=1
+Recurse on 3: leaf
+Recurse on 1: leaf
+Result: fully mirrored tree
+```
+
+**Edge Cases**: Empty tree, single node, tree with only left children, tree with only right children.
+
+**Follow-up Questions**:
+- Can you do it iteratively? (BFS or DFS with stack.)
+- What if the tree is very deep — which approach avoids stack overflow? (Iterative BFS.)
+- Is the tree modified in-place? (Yes, we swap pointers.)
+
+---
+
+### Problem: Diameter of Binary Tree (LC #543) — Easy
+**Companies**: Meta, Google, Amazon, Microsoft.
+
+**Problem**: The diameter of a binary tree is the length of the longest path between any two nodes (measured in edges, not nodes). The path may or may not pass through the root.
+
+```
+        1
+       / \
+      2   3
+     / \
+    4   5
+Diameter = 3 (path: 4 -> 2 -> 1 -> 3, or 5 -> 2 -> 1 -> 3)
+```
+
+**Brute Force**: For every node, compute the height of its left and right subtrees, sum them to get the path through that node. Take the maximum.
+```python
+def diameter_brute(root: TreeNode) -> int:
+    def height(node):
+        if not node:
+            return 0
+        return 1 + max(height(node.left), height(node.right))
+
+    def diameter_at(node):
+        if not node:
+            return 0
+        return height(node.left) + height(node.right)
+
+    if not root:
+        return 0
+    return max(diameter_at(root),
+               diameter_brute(root.left),
+               diameter_brute(root.right))
+```
+Time: O(n^2) — for each node, we recompute heights.
+
+**Key Insight**: The diameter through any node equals `left_height + right_height`. If we compute height bottom-up (post-order), we can simultaneously track the maximum diameter seen so far. This avoids recomputing heights.
+
+**Optimal Solution**:
+```python
+def diameter_of_binary_tree(root: TreeNode) -> int:
+    diameter = 0
+
+    def height(node):
+        nonlocal diameter
+        if not node:
+            return 0
+        left_h = height(node.left)
+        right_h = height(node.right)
+        # The path through this node has length left_h + right_h
+        diameter = max(diameter, left_h + right_h)
+        # Return height of this subtree
+        return 1 + max(left_h, right_h)
+
+    height(root)
+    return diameter
+```
+Time: O(n), Space: O(h).
+
+**Dry Run** with the example:
+```
+height(4): left=0, right=0, diameter=max(0,0)=0, return 1
+height(5): left=0, right=0, diameter=max(0,0)=0, return 1
+height(2): left=1, right=1, diameter=max(0,1+1)=2, return 2
+height(3): left=0, right=0, diameter=max(2,0)=2, return 1
+height(1): left=2, right=1, diameter=max(2,2+1)=3, return 3
+Answer: diameter = 3
+```
+
+**Edge Cases**: Single node (diameter = 0), linear tree (all left or all right), empty tree.
+
+**Follow-up Questions**:
+- What if we want the actual path nodes, not just the length?
+- What if diameter is measured in nodes instead of edges?
+- How is this different from the maximum path sum problem? (Same structure, different "cost" function.)
+
+---
+
+### Problem: Lowest Common Ancestor of a Binary Tree (LC #236) — Medium
+**Companies**: Meta, Google, Amazon, Microsoft, Apple.
+
+**Problem**: Given a binary tree and two nodes p and q, find their lowest common ancestor (LCA). The LCA is the deepest node that has both p and q as descendants (a node can be a descendant of itself).
+
+**Brute Force**: Find the path from root to p and root to q. Compare the paths to find the last common node.
+```python
+def lca_brute(root: TreeNode, p: TreeNode, q: TreeNode) -> TreeNode:
+    def find_path(root, target, path):
+        if not root:
+            return False
+        path.append(root)
+        if root == target:
+            return True
+        if find_path(root.left, target, path) or find_path(root.right, target, path):
+            return True
+        path.pop()
+        return False
+
+    path_p, path_q = [], []
+    find_path(root, p, path_p)
+    find_path(root, q, path_q)
+
+    lca = None
+    for a, b in zip(path_p, path_q):
+        if a == b:
+            lca = a
+        else:
+            break
+    return lca
+```
+Time: O(n), Space: O(n) for the paths.
+
+**Key Insight**: Use post-order DFS. At each node, check: does my left subtree contain p or q? Does my right subtree? If both sides return non-null, the current node is the LCA. If only one side returns non-null, propagate that result up.
+
+**Optimal Solution**:
+```python
+def lowest_common_ancestor(root: TreeNode, p: TreeNode, q: TreeNode) -> TreeNode:
+    if not root or root == p or root == q:
+        return root
+
+    left = lowest_common_ancestor(root.left, p, q)
+    right = lowest_common_ancestor(root.right, p, q)
+
+    if left and right:
+        return root     # p and q are in different subtrees -> root is LCA
+    return left or right  # both are in the same subtree
+```
+Time: O(n), Space: O(h).
+
+**Why this works**: The recursion explores the entire tree. The base case returns the node if it matches p or q. For any internal node:
+- If both left and right recursive calls return non-null, p is in one subtree and q is in the other, so the current node is the LCA.
+- If only one side returns non-null, both p and q are in that subtree, and the returned node is the LCA.
+- If both return null, neither p nor q is in this subtree.
+
+**Dry Run** with tree `[3,5,1,6,2,0,8,null,null,7,4]`, p=5, q=1:
+```
+        3
+       / \
+      5   1
+     / \ / \
+    6  2 0  8
+      / \
+     7   4
+
+lca(3, 5, 1):
+  left = lca(5, 5, 1) -> 5 == p, return 5
+  right = lca(1, 5, 1) -> 1 == q, return 1
+  Both non-null -> return 3
+Answer: 3
+```
+
+**Dry Run** with p=5, q=4:
+```
+lca(3, 5, 4):
+  left = lca(5, 5, 4) -> 5 == p, return 5
+  right = lca(1, 5, 4) -> explores subtrees, finds neither, returns None
+  Only left is non-null -> return 5
+Answer: 5  (5 is ancestor of 4 and ancestor of itself)
+```
+
+**Edge Cases**: p is ancestor of q, p and q are the same node, p or q is the root.
+
+**Follow-up Questions**:
+- What if it is a BST? (Exploit sorted property: go left if both < root, right if both > root, otherwise root is LCA.)
+- What if nodes have parent pointers? (Treat as "intersection of two linked lists" — find where paths from p and q to root converge.)
+- What if p or q might not be in the tree? (Need a modified version that checks both are found.)
+- Repeated LCA queries on the same tree? (Preprocess with Euler tour + sparse table for O(1) queries.)
+
+---
+
+### Problem: Validate Binary Search Tree (LC #98) — Medium
+**Companies**: Meta, Amazon, Google, Microsoft, Bloomberg.
+
+**Problem**: Determine if a binary tree is a valid BST. A valid BST has: left subtree values < node, right subtree values > node.
+
+**Brute Force**: Do in-order traversal, check if the result is strictly increasing.
+```python
+def is_valid_bst_inorder(root: TreeNode) -> bool:
+    vals = []
+    def inorder(node):
+        if not node:
+            return
+        inorder(node.left)
+        vals.append(node.val)
+        inorder(node.right)
+    inorder(root)
+    for i in range(1, len(vals)):
+        if vals[i] <= vals[i - 1]:
+            return False
+    return True
+```
+Time: O(n), Space: O(n) for the array.
+
+**Key Insight**: Pass a valid range [lo, hi] down the tree. Each node must satisfy `lo < node.val < hi`. Left children narrow the upper bound, right children narrow the lower bound.
+
+**Optimal Solution — Range Checking (Top-Down)**:
+```python
+def is_valid_bst(root: TreeNode) -> bool:
+    def validate(node, lo, hi):
+        if not node:
+            return True
+        if node.val <= lo or node.val >= hi:
+            return False
+        return (validate(node.left, lo, node.val) and
+                validate(node.right, node.val, hi))
+
+    return validate(root, float('-inf'), float('inf'))
+```
+Time: O(n), Space: O(h).
+
+**Optimal Solution — In-Order with Early Termination**:
+```python
+def is_valid_bst_iterative(root: TreeNode) -> bool:
+    stack = []
+    prev_val = float('-inf')
+    curr = root
+    while curr or stack:
+        while curr:
+            stack.append(curr)
+            curr = curr.left
+        curr = stack.pop()
+        if curr.val <= prev_val:
+            return False
+        prev_val = curr.val
+        curr = curr.right
+    return True
+```
+
+**Dry Run** with tree `[5, 1, 4, null, null, 3, 6]`:
+```
+        5
+       / \
+      1   4    <-- INVALID: 4 < 5 but 3 < 5 is in right subtree
+         / \
+        3   6
+
+validate(5, -inf, inf): 5 is in range
+  validate(1, -inf, 5): 1 is in range
+    validate(None, -inf, 1): True
+    validate(None, 1, 5): True
+  validate(4, 5, inf): 4 < 5? NO -> return False
+Answer: False
+```
+
+Common mistake: Only checking `node.left.val < node.val < node.right.val` is WRONG. You need to validate the entire subtree constraint, not just the immediate children. Example: `[5, 1, 6, null, null, 3, 7]` — node 3 is in the right subtree of 5 but has value 3 < 5.
+
+**Edge Cases**: Single node (valid), all same values (invalid — BST requires strict inequality), tree with INT_MIN or INT_MAX values.
+
+**Follow-up Questions**:
+- What if duplicates are allowed on the left (or right)?
+- Can you do it iteratively? (In-order traversal with prev tracking.)
+- What is the in-order predecessor and successor of a given node?
+
+---
+
+### Problem: Binary Tree Right Side View (LC #199) — Medium
+**Companies**: Meta, Amazon, Microsoft, Bloomberg.
+
+**Problem**: Given a binary tree, return the values of the nodes you can see from the right side (one per level, the rightmost node).
+
+```
+        1
+       / \
+      2   3
+       \   \
+        5   4
+Right side view: [1, 3, 4]
+```
+
+**Brute Force / BFS Approach**: Level-order traversal, take the last element of each level.
+```python
+from collections import deque
+
+def right_side_view_bfs(root: TreeNode) -> list:
+    if not root:
+        return []
+    result = []
+    queue = deque([root])
+    while queue:
+        level_size = len(queue)
+        for i in range(level_size):
+            node = queue.popleft()
+            if i == level_size - 1:  # last node in this level
+                result.append(node.val)
+            if node.left:
+                queue.append(node.left)
+            if node.right:
+                queue.append(node.right)
+    return result
+```
+Time: O(n), Space: O(w) where w = max width of tree.
+
+**Key Insight for DFS**: Do a modified pre-order: visit root, then RIGHT, then LEFT. The first node we see at each depth is the rightmost node at that level.
+
+**Optimal Solution — DFS**:
+```python
+def right_side_view(root: TreeNode) -> list:
+    result = []
+
+    def dfs(node, depth):
+        if not node:
+            return
+        if depth == len(result):
+            # First node we see at this depth (from right side)
+            result.append(node.val)
+        dfs(node.right, depth + 1)  # Visit right first
+        dfs(node.left, depth + 1)
+
+    dfs(root, 0)
+    return result
+```
+Time: O(n), Space: O(h).
+
+**Dry Run** with the example:
+```
+dfs(1, 0): depth=0, len(result)=0, add 1. result=[1]
+  dfs(3, 1): depth=1, len(result)=1, add 3. result=[1,3]
+    dfs(None, 2): return
+    dfs(4, 2): depth=2, len(result)=2, add 4. result=[1,3,4]
+  dfs(2, 1): depth=1, len(result)=2, 1 != 2, skip
+    dfs(5, 2): depth=2, len(result)=3, 2 != 3, skip
+    dfs(None, 2): return
+Answer: [1, 3, 4]
+```
+
+**Edge Cases**: Empty tree, single node, left-skewed tree (left nodes are visible), complete tree.
+
+**Follow-up Questions**:
+- What about the left side view? (Visit left before right.)
+- What about top view or bottom view? (Use column indices and BFS.)
+- Can you return the boundary of the tree?
+
+---
+
+### Problem: Construct Binary Tree from Preorder and Inorder Traversal (LC #105) — Medium
+**Companies**: Meta, Amazon, Google, Microsoft.
+
+**Problem**: Given preorder and inorder traversal arrays, construct the binary tree.
+
+**Key Insight**: In preorder, the first element is always the root. Find that root's position in inorder — everything to its left is the left subtree, everything to its right is the right subtree. Recursively build each subtree.
+
+Use a hashmap for O(1) lookup of root positions in inorder.
+
+**Brute Force** (without hashmap — linear search each time):
+```python
+def build_tree_brute(preorder, inorder):
+    if not preorder or not inorder:
+        return None
+    root_val = preorder[0]
+    root = TreeNode(root_val)
+    mid = inorder.index(root_val)  # O(n) search
+    root.left = build_tree_brute(preorder[1:mid+1], inorder[:mid])
+    root.right = build_tree_brute(preorder[mid+1:], inorder[mid+1:])
+    return root
+```
+Time: O(n^2) worst case due to linear search and array slicing.
+
+**Optimal Solution**:
+```python
+def build_tree(preorder: list, inorder: list) -> TreeNode:
+    inorder_map = {val: idx for idx, val in enumerate(inorder)}
+    pre_idx = [0]  # use list to allow mutation in nested function
+
+    def build(in_left, in_right):
+        if in_left > in_right:
+            return None
+
+        root_val = preorder[pre_idx[0]]
+        pre_idx[0] += 1
+        root = TreeNode(root_val)
+
+        mid = inorder_map[root_val]
+        root.left = build(in_left, mid - 1)    # build left subtree first
+        root.right = build(mid + 1, in_right)   # then right subtree
+
+        return root
+
+    return build(0, len(inorder) - 1)
+```
+Time: O(n), Space: O(n) for the hashmap.
+
+**Dry Run** with `preorder=[3,9,20,15,7], inorder=[9,3,15,20,7]`:
+```
+inorder_map = {9:0, 3:1, 15:2, 20:3, 7:4}
+
+build(0, 4): root = preorder[0] = 3, mid = 1
+  build(0, 0): root = preorder[1] = 9, mid = 0
+    build(0, -1): None (left of 9)
+    build(1, 0): None (right of 9 — in_left > in_right)
+    return TreeNode(9)
+  build(2, 4): root = preorder[2] = 20, mid = 3
+    build(2, 2): root = preorder[3] = 15, mid = 2
+      build(2, 1): None
+      build(3, 2): None
+      return TreeNode(15)
+    build(4, 4): root = preorder[4] = 7, mid = 4
+      build(4, 3): None
+      build(5, 4): None
+      return TreeNode(7)
+    return TreeNode(20, left=15, right=7)
+  return TreeNode(3, left=9, right=20)
+
+Result:
+    3
+   / \
+  9  20
+    /  \
+   15   7
+```
+
+**Why we build left before right**: Preorder visits root, then LEFT subtree, then right subtree. So after consuming the root, the next entries in preorder belong to the left subtree. If we built right first, we would consume the wrong entries.
+
+**Edge Cases**: Single node, all in left subtree (sorted input for preorder), all in right subtree.
+
+**Follow-up Questions**:
+- Can you do it from postorder + inorder? (Last element of postorder is root, build right before left.)
+- Can you do it from preorder alone if it is a BST? (Use BST bounds to determine subtree boundaries.)
+- What if there are duplicate values? (Cannot construct a unique tree.)
+
+---
+
+### Problem: Serialize and Deserialize Binary Tree (LC #297) — Hard
+**Companies**: Meta, Google, Amazon, Microsoft, Uber.
+
+**Problem**: Design an algorithm to serialize a binary tree to a string and deserialize the string back to the tree.
+
+**Key Insight**: Use pre-order traversal with null markers. Serialize: visit each node and record its value (or "null" for empty nodes). Deserialize: read values in the same order and reconstruct.
+
+**Brute Force**: Level-order serialization with null placeholders. Works but produces longer strings due to trailing nulls.
+```python
+from collections import deque
+
+def serialize_level(root):
+    if not root:
+        return "[]"
+    result = []
+    queue = deque([root])
+    while queue:
+        node = queue.popleft()
+        if node:
+            result.append(str(node.val))
+            queue.append(node.left)
+            queue.append(node.right)
+        else:
+            result.append("null")
+    # Remove trailing nulls
+    while result and result[-1] == "null":
+        result.pop()
+    return "[" + ",".join(result) + "]"
+```
+
+**Optimal Solution — Preorder DFS**:
+```python
+class Codec:
+    def serialize(self, root: TreeNode) -> str:
+        """Pre-order traversal with null markers."""
+        result = []
+
+        def dfs(node):
+            if not node:
+                result.append("N")
+                return
+            result.append(str(node.val))
+            dfs(node.left)
+            dfs(node.right)
+
+        dfs(root)
+        return ",".join(result)
+
+    def deserialize(self, data: str) -> TreeNode:
+        """Reconstruct from pre-order sequence."""
+        vals = iter(data.split(","))
+
+        def dfs():
+            val = next(vals)
+            if val == "N":
+                return None
+            node = TreeNode(int(val))
+            node.left = dfs()
+            node.right = dfs()
+            return node
+
+        return dfs()
+```
+Time: O(n) for both operations. Space: O(n).
+
+**Dry Run**:
+```
+Tree:     1
+         / \
+        2   3
+           / \
+          4   5
+
+Serialize:
+  dfs(1): append "1"
+    dfs(2): append "2"
+      dfs(None): append "N"
+      dfs(None): append "N"
+    dfs(3): append "3"
+      dfs(4): append "4"
+        dfs(None): append "N"
+        dfs(None): append "N"
+      dfs(5): append "5"
+        dfs(None): append "N"
+        dfs(None): append "N"
+Result: "1,2,N,N,3,4,N,N,5,N,N"
+
+Deserialize "1,2,N,N,3,4,N,N,5,N,N":
+  val="1": create node(1)
+    val="2": create node(2)
+      val="N": return None (left of 2)
+      val="N": return None (right of 2)
+    val="3": create node(3)
+      val="4": create node(4)
+        val="N": return None
+        val="N": return None
+      val="5": create node(5)
+        val="N": return None
+        val="N": return None
+  Reconstructed tree matches original.
+```
+
+**Why preorder works for serialization**: Preorder uniquely encodes the tree structure when null markers are included. Each node and each null is recorded exactly once, and the order of traversal lets us reconstruct without ambiguity.
+
+**Edge Cases**: Empty tree (serializes to "N"), single node, tree with negative values, very large values.
+
+**Follow-up Questions**:
+- Can you compress the serialized format? (Use binary encoding, varint for values.)
+- How would you handle a BST more efficiently? (Preorder without null markers suffices — BST bounds determine subtree boundaries.)
+- What if the tree is very wide? (Level-order uses more space with null placeholders.)
+- Stream serialization? (Use a delimiter-based format that can be parsed incrementally.)
+
+---
+
+### Problem: Binary Tree Maximum Path Sum (LC #124) — Hard
+**Companies**: Meta, Google, Amazon, Microsoft — frequently asked at senior levels.
+
+**Problem**: Find the maximum path sum in a binary tree. A path is any sequence of nodes connected by edges. The path does not need to pass through the root and does not need to go from a leaf.
+
+```
+       -10
+       /  \
+      9   20
+         /  \
+        15   7
+Max path sum: 15 + 20 + 7 = 42
+```
+
+**Brute Force**: For every pair of nodes, find the path between them and compute its sum. This is O(n^3) and impractical.
+
+**Key Insight**: At each node, we make a choice: the path either "turns" at this node (using both left and right children) or continues through this node (can only use one child). We track the global max considering turns, but return only the one-sided max (for the parent to use).
+
+The distinction:
+- **Path through node** (for global max): `node.val + max(0, left_gain) + max(0, right_gain)`
+- **Path extending to parent** (return value): `node.val + max(0, max(left_gain, right_gain))`
+
+We use `max(0, ...)` because a negative-sum subtree should be ignored (do not extend into it).
+
+**Optimal Solution**:
+```python
+def max_path_sum(root: TreeNode) -> int:
+    max_sum = float('-inf')
+
+    def gain(node):
+        """Return max gain obtainable from a path starting at node going downward."""
+        nonlocal max_sum
+        if not node:
+            return 0
+
+        # Max gain from left and right children (ignore negative paths)
+        left_gain = max(0, gain(node.left))
+        right_gain = max(0, gain(node.right))
+
+        # Path through this node as the highest point (turning point)
+        path_through = node.val + left_gain + right_gain
+        max_sum = max(max_sum, path_through)
+
+        # Return max gain extending downward (can only go one way to parent)
+        return node.val + max(left_gain, right_gain)
+
+    gain(root)
+    return max_sum
+```
+Time: O(n), Space: O(h).
+
+**Dry Run** with the example:
+```
+gain(9):   left=0, right=0, path_through=9, max_sum=9, return 9
+gain(15):  left=0, right=0, path_through=15, max_sum=15, return 15
+gain(7):   left=0, right=0, path_through=7, max_sum=15, return 7
+gain(20):  left=max(0,15)=15, right=max(0,7)=7
+           path_through = 20+15+7 = 42, max_sum=42
+           return 20 + max(15,7) = 35
+gain(-10): left=max(0,9)=9, right=max(0,35)=35
+           path_through = -10+9+35 = 34, max_sum=42 (no update)
+           return -10 + max(9,35) = 25
+
+Answer: max_sum = 42
+```
+
+**Why `max(0, ...)` is critical**: A subtree with negative gain should not be included — the path is better off not going there at all. Without this, negative subtrees would drag down the sum.
+
+**Edge Cases**: All negative values (answer is the least negative single node), single node, tree with all zeros.
+
+**Follow-up Questions**:
+- What if the path must go from leaf to leaf? (Cannot use `max(0, ...)` — must include at least one path from each non-null child.)
+- What if we need to return the actual path, not just the sum?
+- How is this related to Kadane's algorithm? (Same idea: at each position, decide whether to extend the current path or start fresh.)
+
+---
+
+## Common Mistakes & Interview Tips
+
+### Mistakes to Avoid
+1. **Confusing height with depth** — Height is bottom-up (leaf = 0 or 1 depending on convention). Depth is top-down (root = 0). Be consistent and clarify with the interviewer.
+2. **Not handling null nodes** — Always have a base case `if not node: return ...` as the very first line.
+3. **Mutating the tree unintentionally** — Morris traversal modifies and restores the tree. Make sure you restore it if the tree is needed later.
+4. **Wrong return value in post-order** — When a function returns info to the parent, make sure the return value represents what the parent needs (one-sided path, not both-sided).
+5. **BST validation: checking only immediate children** — `node.left.val < node.val` is necessary but not sufficient. You must check the entire subtree constraint.
+6. **In-order traversal of BST: assuming sorted without handling duplicates** — Clarify with the interviewer whether the BST has strict inequality.
+7. **Confusing preorder and inorder indices** — In the construct-from-preorder-inorder problem, be precise about which slice of the preorder array corresponds to which subtree.
+
+### Interview Tips
+1. **Start with recursive solution** — Trees are recursive structures. The recursive solution is usually the most natural. Convert to iterative if asked.
+2. **Clarify the return value of your DFS** — Before coding, explicitly state what your recursive function returns. "This function returns the height of the subtree rooted at node."
+3. **Draw the tree and trace through** — Interviewers want to see you think. Draw a small tree (5-7 nodes) and trace your algorithm.
+4. **Know when to use BFS vs DFS** — BFS for level-by-level problems. DFS for depth/height/path problems.
+5. **For hard problems, identify the two-value pattern** — Many hard tree problems require tracking two things: a return value for the parent AND a global optimum. Diameter, max path sum, and others all follow this pattern.
+6. **Mention space complexity** — Recursive solutions use O(h) stack space. For balanced trees this is O(log n), but for skewed trees it is O(n). If this matters, offer an iterative or Morris traversal solution.
+
+---
+
+## Pattern Connections
+
+| Pattern | Connection to Trees |
+|---------|--------------------|
+| **DFS** | Tree DFS is the simplest form of graph DFS — no visited set needed because trees are acyclic. |
+| **BFS** | Level-order traversal is BFS on a tree. Same queue-based approach as graph BFS. |
+| **Divide and Conquer** | Every recursive tree problem is D&C: split at the root into left and right subproblems. |
+| **Binary Search** | BST operations (search, insert, validate) are binary search in tree form. |
+| **Stack** | Iterative tree traversals use an explicit stack to simulate recursion. |
+| **Recursion** | Trees ARE recursion. Mastering tree problems means mastering recursive thinking. |
+| **Dynamic Programming** | Some tree DP problems exist (house robber on tree, tree diameter). They follow the post-order pattern. |
+| **Serialization** | Serialize/deserialize is about encoding tree structure — similar to encoding graphs or complex data structures. |
+
+### Progression Path
+```
+Invert Tree (226) -> Same Tree (100) -> Symmetric Tree (101)
+Max Depth (104) -> Diameter (543) -> Max Path Sum (124)
+Validate BST (98) -> Kth Smallest (230) -> BST Iterator (173)
+LCA (236) -> LCA in BST (235) -> LCA with Parent Pointers
+Level Order (102) -> Right Side View (199) -> Zigzag (103)
+Construct from Preorder+Inorder (105) -> Serialize/Deserialize (297)
+```
