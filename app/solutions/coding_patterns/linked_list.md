@@ -1,24 +1,72 @@
-# Linked List Pattern Guide
+# Linked List — Complete Interview Guide
 
-## What is a Linked List?
+## When to Use This Pattern
 
-### Explain Like I'm 5
-Imagine a chain of boxes where each box contains a treasure and a note telling you where the next box is. You can't jump to any box you want - you have to start at the first box and follow the notes to get to the next one. If you want to find the 5th box, you have to open boxes 1, 2, 3, and 4 first!
+### Signals That Point to Linked List Techniques
+1. **Sequential access with O(1) insertion/deletion** — you need to add or remove elements from the middle without shifting everything else.
+2. **In-place reordering** — the problem asks you to rearrange nodes (reverse, reorder, rotate) without extra space.
+3. **Cycle or intersection detection** — you need to detect loops, find meeting points, or determine if two sequences converge.
+4. **Merge or split sorted sequences** — combine or partition ordered linked lists efficiently.
+5. **Ordered eviction / caching** — maintain an access-ordered collection where the least-recently-used element can be evicted in O(1).
+6. **K-way merge** — merge K sorted streams where each stream is a linked list.
 
-Unlike a row of numbered lockers where you can go directly to locker #5, with our treasure boxes, you must follow the chain.
+### When NOT to Use
+- If you need random access by index — use an array.
+- If the problem is about subsequences, subsets, or permutations — consider DP or backtracking.
+- If elements need to be sorted frequently — a heap or balanced BST is better.
 
-### Technical Definition
-A linked list is a linear data structure where elements (nodes) are stored in non-contiguous memory locations. Each node contains:
-- **Data**: The actual value stored
-- **Next pointer**: A reference to the next node in the sequence
+---
 
-Unlike arrays which store elements in contiguous memory with direct index access, linked lists require traversal from the head (first node) to access elements.
+## Core Mechanics
 
-**Types of Linked Lists:**
-- **Singly Linked List**: Each node points to the next node
-- **Doubly Linked List**: Each node points to both next and previous nodes
-- **Circular Linked List**: The last node points back to the first node
+### Why Linked Lists Work the Way They Do
+A linked list is a chain of nodes where each node holds a value and a pointer to the next node. The key **invariant** is that you can only reach a node by traversing from the head. This constraint makes random access O(n) but gives you O(1) insertion/deletion once you have a reference to the predecessor.
 
+**Singly Linked List**: Each node points to the next. You can only traverse forward.
+```
+[1] -> [2] -> [3] -> [4] -> None
+```
+
+**Doubly Linked List**: Each node points to both next and prev. You can traverse in both directions. Essential for LRU Cache.
+```
+None <- [1] <-> [2] <-> [3] <-> [4] -> None
+```
+
+### Key Techniques
+
+**1. Dummy Node (Sentinel)**
+A dummy node before the real head simplifies edge cases. Instead of special-casing "what if the head changes?", you always return `dummy.next`.
+
+```
+dummy -> [1] -> [2] -> [3] -> None
+          ^head
+```
+
+**2. Two Pointers (Slow/Fast)**
+Move one pointer 1 step at a time, another 2 steps. When fast reaches the end, slow is at the middle. If there is a cycle, they will meet inside the cycle.
+
+**3. In-Place Reversal**
+Use three pointers (prev, curr, next_node) to reverse links one at a time. This is the most fundamental linked list operation.
+
+**4. Recursive Decomposition**
+Many linked list problems have elegant recursive solutions where you solve for `head.next` first, then handle `head`.
+
+### Complexity Analysis
+| Operation | Singly | Doubly |
+|-----------|--------|--------|
+| Access by index | O(n) | O(n) |
+| Insert at head | O(1) | O(1) |
+| Insert at tail (with tail ptr) | O(1) | O(1) |
+| Delete given node | O(n)* | O(1) |
+| Search | O(n) | O(n) |
+
+*O(1) if you have the predecessor; O(n) to find it in a singly linked list.
+
+---
+
+## The Templates
+
+### Python — Singly Linked List Node
 ```python
 class ListNode:
     def __init__(self, val=0, next=None):
@@ -26,960 +74,997 @@ class ListNode:
         self.next = next
 ```
 
-## Real-World Analogy
-
-### Treasure Hunt with Clues
-You're on a treasure hunt where:
-- Each location has a clue pointing to the next location
-- You must visit locations in order - no skipping!
-- To get to the 4th location, you must visit locations 1, 2, and 3
-- If you lose a clue (pointer), you can't reach the rest of the hunt
-- You can add new locations by updating clues
-- You can remove locations by changing which clue points where
-
-### Train Cars
-A train is like a linked list:
-- Each car (node) is connected to the next car (next pointer)
-- The engine is the head of the list
-- You can add cars anywhere by disconnecting and reconnecting
-- You can't jump from car 1 to car 5 - you must walk through cars 2, 3, and 4
-- If a connection breaks, the cars behind are lost
-
-## When to Use
-
-**You should think "Linked List" when you see:**
-
-1. **Problem mentions "linked list" explicitly** - Obviously!
-2. **Sequential access patterns** - No random access needed
-3. **Frequent insertions/deletions** - Especially in the middle
-4. **You need to reverse something** - Reversing linked lists is a classic pattern
-5. **Detecting cycles** - Fast/slow pointer technique
-6. **Finding middle element** - Fast/slow pointer technique
-7. **Merging sorted sequences** - Merge two sorted linked lists
-8. **LRU Cache implementation** - Combines linked list + hash map
-
-**Advantages over Arrays:**
-- O(1) insertion/deletion when you have the pointer to the location
-- Dynamic size - no need to pre-allocate memory
-- Efficient memory usage for sparse data
-
-**Disadvantages:**
-- O(n) random access - must traverse from head
-- Extra memory for storing pointers
-- Poor cache locality (nodes scattered in memory)
-
-## The Problem: Classic Examples
-
-### Problem 1: Reverse Linked List (LeetCode 206)
-
-Given the head of a singly linked list, reverse the list and return the reversed list.
-
-```
-Input: 1 -> 2 -> 3 -> 4 -> 5 -> NULL
-Output: 5 -> 4 -> 3 -> 2 -> 1 -> NULL
-```
-
-### Problem 2: Detect Cycle in Linked List (LeetCode 141)
-
-Given head of a linked list, determine if the linked list has a cycle.
-
-```
-Input: 3 -> 2 -> 0 -> -4
-           ^         |
-           |_________|
-Output: True (cycle exists)
-```
-
-## Brute Force Approach
-
-### Reverse Linked List - Using Array
-
-**Idea**: Convert linked list to array, reverse array, rebuild linked list.
-
+### Python — In-Place Reversal Template
 ```python
-def reverseList_bruteforce(head: ListNode) -> ListNode:
-    """
-    Brute force: Store values in array, reverse, rebuild list
-    Time: O(n) - traverse twice
-    Space: O(n) - store all values in array
-    """
-    if not head:
-        return None
-
-    # Step 1: Extract all values into an array
-    values = []
-    current = head
-    while current:
-        values.append(current.val)
-        current = current.next
-
-    # Step 2: Reverse the array
-    values.reverse()
-
-    # Step 3: Build new linked list from reversed array
-    dummy = ListNode(0)
-    current = dummy
-    for val in values:
-        current.next = ListNode(val)
-        current = current.next
-
-    return dummy.next
-```
-
-**Why this is not optimal:**
-- Uses O(n) extra space for the array
-- Creates entirely new nodes instead of reusing existing ones
-- Requires three passes through the data
-
-### Detect Cycle - Using Hash Set
-
-**Idea**: Store visited nodes in a set. If we see a node twice, there's a cycle.
-
-```python
-def hasCycle_bruteforce(head: ListNode) -> bool:
-    """
-    Brute force: Track all visited nodes in a set
-    Time: O(n)
-    Space: O(n) - store all nodes in set
-    """
-    if not head:
-        return False
-
-    visited = set()
-    current = head
-
-    while current:
-        # If we've seen this node before, there's a cycle
-        if current in visited:
-            return True
-
-        # Mark this node as visited
-        visited.add(current)
-        current = current.next
-
-    # Reached the end (NULL) - no cycle
-    return False
-```
-
-**Why this is not optimal:**
-- Uses O(n) extra space to store node references
-- Set operations have overhead
-- We can solve this with O(1) space using two pointers
-
-## Optimized Solution
-
-### Reverse Linked List - Iterative (In-place)
-
-**Idea**: Reverse pointers one by one while traversing the list.
-
-```python
-def reverseList(head: ListNode) -> ListNode:
-    """
-    Optimal iterative solution using pointer reversal
-    Time: O(n) - single pass through list
-    Space: O(1) - only three pointers used
-
-    Key insight: Reverse the 'next' pointer of each node as we traverse
-    """
-    # prev will eventually become the new head
+def reverse_list(head: ListNode) -> ListNode:
     prev = None
-    current = head
-
-    # Traverse the list and reverse pointers
-    while current:
-        # CRITICAL: Save the next node before we lose the reference
-        next_node = current.next
-
-        # Reverse the pointer: make current point backwards
-        current.next = prev
-
-        # Move prev and current one step forward
-        prev = current
-        current = next_node
-
-    # When loop ends, prev is the new head (last node of original list)
-    return prev
-
-
-"""
-Visual walkthrough:
-Initial: NULL <- prev   current -> 1 -> 2 -> 3 -> NULL
-
-Step 1:  NULL <- 1   current -> 2 -> 3 -> NULL
-              prev
-
-Step 2:  NULL <- 1 <- 2   current -> 3 -> NULL
-                   prev
-
-Step 3:  NULL <- 1 <- 2 <- 3   current -> NULL
-                        prev
-
-Final: prev points to new head (3)
-"""
+    curr = head
+    while curr:
+        next_node = curr.next   # save next
+        curr.next = prev        # reverse link
+        prev = curr             # advance prev
+        curr = next_node        # advance curr
+    return prev                 # prev is new head
 ```
 
-### Reverse Linked List - Recursive
-
+### Python — Slow/Fast Template
 ```python
-def reverseList_recursive(head: ListNode) -> ListNode:
-    """
-    Optimal recursive solution
-    Time: O(n) - visit each node once
-    Space: O(n) - recursive call stack
-
-    The recursive approach reverses from the end backwards
-    """
-    # Base case: empty list or single node
-    if not head or not head.next:
-        return head
-
-    # Recursively reverse the rest of the list
-    # new_head will be the last node of the original list
-    new_head = reverseList_recursive(head.next)
-
-    # Reverse the pointer between current and next node
-    # Make the next node point back to current
-    head.next.next = head
-
-    # Set current node's next to NULL (it might become the tail)
-    head.next = None
-
-    return new_head
-
-
-"""
-Recursive visualization for 1 -> 2 -> 3 -> NULL:
-
-Call stack (going down):
-reverseList(1) -> reverseList(2) -> reverseList(3) -> return 3
-
-Unwinding (coming back up):
-1. reverseList(3) returns 3 (base case)
-2. reverseList(2): 3 -> 2, return 3
-3. reverseList(1): 3 -> 2 -> 1, return 3
-
-Result: 3 -> 2 -> 1 -> NULL
-"""
-```
-
-### Detect Cycle - Fast/Slow Pointer (Floyd's Algorithm)
-
-**Idea**: Use two pointers moving at different speeds. If there's a cycle, they'll meet.
-
-```python
-def hasCycle(head: ListNode) -> bool:
-    """
-    Optimal solution using Floyd's Cycle Detection (Tortoise and Hare)
-    Time: O(n) - in worst case, slow traverses entire list
-    Space: O(1) - only two pointers
-
-    Key insight: In a cycle, a fast pointer will eventually catch up to a slow pointer
-    Think of a circular race track - faster runner laps slower runner
-    """
-    if not head or not head.next:
-        return False
-
-    # Initialize two pointers
-    slow = head      # Moves 1 step at a time (tortoise)
-    fast = head      # Moves 2 steps at a time (hare)
-
-    # Keep moving until fast reaches the end or they meet
-    while fast and fast.next:
-        slow = slow.next        # Move 1 step
-        fast = fast.next.next   # Move 2 steps
-
-        # If they meet, there's a cycle
-        if slow == fast:
-            return True
-
-    # Fast reached the end (NULL) - no cycle
-    return False
-
-
-"""
-Why this works:
-
-Without cycle:
-Fast pointer reaches NULL first
-slow: 1 -> 2 -> 3 -> 4
-fast: 1 -> 3 -> NULL
-
-With cycle:
-Pointers eventually meet inside the cycle
-slow: 1 -> 2 -> 3 -> 4 -> 2 -> 3 ...
-fast: 1 -> 3 -> 2 -> 4 -> 3 -> 2 ...
-They meet at some node!
-
-Mathematical proof:
-- Distance between pointers decreases by 1 each step
-- When slow enters cycle, fast is already inside
-- They MUST meet within cycle length iterations
-"""
-```
-
-## Time & Space Complexity Analysis
-
-### Reverse Linked List
-
-| Approach | Time Complexity | Space Complexity | Notes |
-|----------|----------------|------------------|-------|
-| Brute Force (Array) | O(n) | O(n) | Three passes, creates new nodes |
-| Iterative (In-place) | O(n) | O(1) | Single pass, reuses nodes |
-| Recursive | O(n) | O(n) | Single pass, but call stack |
-
-**Winner**: Iterative approach - O(n) time, O(1) space
-
-### Detect Cycle
-
-| Approach | Time Complexity | Space Complexity | Notes |
-|----------|----------------|------------------|-------|
-| Hash Set | O(n) | O(n) | Store all visited nodes |
-| Fast/Slow Pointer | O(n) | O(1) | Floyd's algorithm |
-
-**Winner**: Fast/Slow Pointer - O(n) time, O(1) space
-
-## Variations & Techniques
-
-### 1. Fast/Slow Pointer (Two-Pointer Technique)
-
-Used for: Finding middle, detecting cycles, finding kth from end
-
-```python
-def findMiddle(head: ListNode) -> ListNode:
-    """
-    Find the middle node of a linked list
-    If even number of nodes, return the second middle
-
-    Time: O(n), Space: O(1)
-    """
+def find_middle(head: ListNode) -> ListNode:
     slow = fast = head
-
-    # When fast reaches end, slow is at middle
     while fast and fast.next:
         slow = slow.next
         fast = fast.next.next
-
-    return slow
-
-
-def findNthFromEnd(head: ListNode, n: int) -> ListNode:
-    """
-    Find the nth node from the end of the list
-
-    Technique: Move fast pointer n steps ahead, then move both
-    Time: O(n), Space: O(1)
-    """
-    fast = slow = head
-
-    # Move fast pointer n steps ahead
-    for _ in range(n):
-        if not fast:
-            return None  # List shorter than n
-        fast = fast.next
-
-    # Move both pointers until fast reaches end
-    while fast:
-        slow = slow.next
-        fast = fast.next
-
-    return slow
+    return slow  # middle node (for even length, second middle)
 ```
 
-### 2. Dummy Head Technique
-
-Used for: Simplifying edge cases, especially when head might change
-
+### Python — Dummy Node Template
 ```python
-def removeElements(head: ListNode, val: int) -> ListNode:
-    """
-    Remove all nodes with given value
-
-    Dummy head avoids special case handling for head removal
-    Time: O(n), Space: O(1)
-    """
-    # Create dummy node pointing to head
+def merge_two_lists(l1: ListNode, l2: ListNode) -> ListNode:
     dummy = ListNode(0)
-    dummy.next = head
-
-    current = dummy
-
-    # Traverse and remove matching nodes
-    while current.next:
-        if current.next.val == val:
-            # Skip the node with matching value
-            current.next = current.next.next
-        else:
-            current = current.next
-
-    # Return the new head (might have changed if original head was removed)
-    return dummy.next
-```
-
-### 3. Reversal Technique
-
-Used for: Reverse entire list, reverse in groups, palindrome check
-
-```python
-def reverseKGroup(head: ListNode, k: int) -> ListNode:
-    """
-    Reverse nodes in groups of k
-    Example: 1->2->3->4->5, k=2 => 2->1->4->3->5
-
-    Time: O(n), Space: O(1)
-    """
-    # Count total nodes
-    count = 0
-    current = head
-    while current:
-        count += 1
-        current = current.next
-
-    dummy = ListNode(0)
-    dummy.next = head
-    prev_group = dummy
-
-    # Process each group of k nodes
-    while count >= k:
-        # Reverse k nodes
-        current = prev_group.next
-        next_node = current.next
-
-        for _ in range(k - 1):
-            current.next = next_node.next
-            next_node.next = prev_group.next
-            prev_group.next = next_node
-            next_node = current.next
-
-        prev_group = current
-        count -= k
-
-    return dummy.next
-
-
-def isPalindrome(head: ListNode) -> bool:
-    """
-    Check if linked list is a palindrome
-    Technique: Find middle, reverse second half, compare
-
-    Time: O(n), Space: O(1)
-    """
-    if not head or not head.next:
-        return True
-
-    # Find middle using slow/fast pointers
-    slow = fast = head
-    while fast.next and fast.next.next:
-        slow = slow.next
-        fast = fast.next.next
-
-    # Reverse second half
-    second_half = reverseList(slow.next)
-
-    # Compare first half with reversed second half
-    first = head
-    second = second_half
-    is_palindrome = True
-
-    while second:  # Second half might be shorter
-        if first.val != second.val:
-            is_palindrome = False
-            break
-        first = first.next
-        second = second.next
-
-    # Optional: Restore the list
-    slow.next = reverseList(second_half)
-
-    return is_palindrome
-```
-
-### 4. Multiple Pointers Technique
-
-Used for: Merging lists, partitioning, reordering
-
-```python
-def mergeTwoLists(l1: ListNode, l2: ListNode) -> ListNode:
-    """
-    Merge two sorted linked lists
-
-    Time: O(n + m), Space: O(1)
-    """
-    dummy = ListNode(0)
-    current = dummy
-
-    # Compare and merge
+    tail = dummy
     while l1 and l2:
         if l1.val <= l2.val:
-            current.next = l1
+            tail.next = l1
             l1 = l1.next
         else:
-            current.next = l2
+            tail.next = l2
             l2 = l2.next
-        current = current.next
-
-    # Attach remaining nodes
-    current.next = l1 if l1 else l2
-
-    return dummy.next
-
-
-def partition(head: ListNode, x: int) -> ListNode:
-    """
-    Partition list so all nodes < x come before nodes >= x
-
-    Time: O(n), Space: O(1)
-    """
-    # Two separate lists: less than x, greater or equal to x
-    less_dummy = ListNode(0)
-    greater_dummy = ListNode(0)
-    less = less_dummy
-    greater = greater_dummy
-
-    # Partition nodes into two lists
-    current = head
-    while current:
-        if current.val < x:
-            less.next = current
-            less = less.next
-        else:
-            greater.next = current
-            greater = greater.next
-        current = current.next
-
-    # Connect the two lists
-    greater.next = None  # Important: terminate the list
-    less.next = greater_dummy.next
-
-    return less_dummy.next
-```
-
-### 5. Runner Technique (K-width Gap)
-
-Used for: Finding kth from end, removing nth node
-
-```python
-def removeNthFromEnd(head: ListNode, n: int) -> ListNode:
-    """
-    Remove the nth node from the end
-
-    Technique: Maintain n-node gap between two pointers
-    Time: O(L), Space: O(1) where L is list length
-    """
-    dummy = ListNode(0)
-    dummy.next = head
-    fast = slow = dummy
-
-    # Move fast pointer n+1 steps ahead
-    for _ in range(n + 1):
-        fast = fast.next
-
-    # Move both until fast reaches end
-    while fast:
-        slow = slow.next
-        fast = fast.next
-
-    # Remove the nth node from end
-    slow.next = slow.next.next
-
+        tail = tail.next
+    tail.next = l1 or l2
     return dummy.next
 ```
 
-## Pro Tips for Senior Engineers
-
-### 1. Always Draw It Out
-
-Before writing code, draw the linked list transformation on paper/whiteboard:
-- Draw initial state
-- Draw intermediate states
-- Draw final state
-- Mark where pointers move
-
-This prevents losing references and clarifies the algorithm.
-
-### 2. Handle Edge Cases First
-
-**Always consider:**
-```python
-def solution(head: ListNode) -> ListNode:
-    # Empty list
-    if not head:
-        return None
-
-    # Single node
-    if not head.next:
-        return head
-
-    # Your main logic here
-    pass
-```
-
-**Common edge cases:**
-- Empty list (`head = None`)
-- Single node (`head.next = None`)
-- Two nodes
-- All nodes have same value
-- Cycle at first node
-- Very long list (performance)
-
-### 3. Use Dummy Nodes for Head Changes
-
-When the head might be removed or changed:
-```python
-dummy = ListNode(0)
-dummy.next = head
-# Work with dummy, return dummy.next
-```
-
-This eliminates special case handling for head removal.
-
-### 4. Save References Before Modifying
-
-```python
-# WRONG - loses reference
-current.next = current.next.next
-
-# RIGHT - save reference first
-next_node = current.next
-current.next = next_node.next
-```
-
-### 5. Fast/Slow Pointer Template
-
-```python
-def fast_slow_template(head: ListNode):
-    slow = fast = head
-
-    # Pattern 1: Find middle (fast goes to end)
-    while fast and fast.next:
-        slow = slow.next
-        fast = fast.next.next
-
-    # Pattern 2: Detect cycle (check if they meet)
-    while fast and fast.next:
-        slow = slow.next
-        fast = fast.next.next
-        if slow == fast:
-            return True  # Cycle detected
-
-    return False
-```
-
-### 6. Check Loop Conditions Carefully
-
-```python
-# For single-step movement
-while current:
-    current = current.next
-
-# For two-step movement (need both checks!)
-while fast and fast.next:
-    fast = fast.next.next
-
-# Accessing current.next? Check current first!
-while current and current.next:
-    # Safe to access current.next here
-```
-
-### 7. Visualize with Concrete Example
-
-Test mentally with: `1 -> 2 -> 3 -> NULL`
-- Shows normal case
-- Small enough to trace
-- Not too trivial (more than 2 nodes)
-
-### 8. Time Complexity Rules of Thumb
-
-- Single pass: O(n)
-- Nested loops: Usually O(n²), but not always in linked lists
-- Fast/slow pointers: Still O(n) - fast does at most 2n steps
-- Recursive: O(n) time, O(n) space for call stack
-
-## Problem Recognition Patterns
-
-| Pattern Signal | Technique to Use | Example Problems |
-|----------------|------------------|------------------|
-| "Reverse" | Pointer reversal | Reverse Linked List, Reverse in Groups |
-| "Cycle" / "Loop" | Fast/slow pointers | Detect Cycle, Find Cycle Start |
-| "Middle" | Fast/slow pointers | Middle of Linked List, Palindrome Check |
-| "Nth from end" | Two pointers with gap | Remove Nth From End |
-| "Merge" sorted lists | Two pointers | Merge Two Sorted Lists, Merge K Lists |
-| "Partition" / "Separate" | Multiple pointers/lists | Partition List, Odd Even Linked List |
-| "Remove" nodes | Dummy head | Remove Elements, Remove Duplicates |
-| "Palindrome" | Reverse + compare | Palindrome Linked List |
-| "Intersection" | Two pointers | Intersection of Two Linked Lists |
-| "Sort" | Merge sort | Sort List |
-| "Clone" / "Deep copy" | Hash map | Copy List with Random Pointer |
-
-## Practice Problems
-
-### Beginner Level
-1. **Reverse Linked List** (LeetCode 206)
-   - Classic reversal problem
-   - Master both iterative and recursive solutions
-
-2. **Merge Two Sorted Lists** (LeetCode 21)
-   - Two pointer technique
-   - Good for understanding pointer manipulation
-
-3. **Remove Duplicates from Sorted List** (LeetCode 83)
-   - Simple traversal with deletion
-   - Practice pointer updates
-
-### Intermediate Level
-4. **Linked List Cycle II** (LeetCode 142)
-   - Find where cycle begins
-   - Advanced fast/slow pointer technique
-
-5. **Reorder List** (LeetCode 143)
-   - Combines: find middle, reverse, merge
-   - Tests multiple techniques
-
-6. **Remove Nth Node From End** (LeetCode 19)
-   - Two-pointer with gap
-   - Dummy head technique
-
-7. **Copy List with Random Pointer** (LeetCode 138)
-   - Deep copy with extra pointer
-   - Hash map or interweaving technique
-
-### Advanced Level
-8. **LRU Cache** (LeetCode 146)
-   - Doubly linked list + hash map
-   - Most common asked linked list problem
-   - Tests design skills
-
-9. **Merge K Sorted Lists** (LeetCode 23)
-   - Extension of merge two lists
-   - Use heap for optimization
-
-10. **Reverse Nodes in k-Group** (LeetCode 25)
-    - Complex reversal logic
-    - Edge case handling
-
-## Common Mistakes to Avoid
-
-### 1. Null Pointer Errors
-
-```python
-# WRONG - will crash if current is None
-def buggy_code(head):
-    current = head
-    while current.next:  # What if head is None?
-        current = current.next
-
-# RIGHT - check for None first
-def correct_code(head):
-    if not head:
-        return None
-    current = head
-    while current and current.next:
-        current = current.next
-```
-
-### 2. Losing References
-
-```python
-# WRONG - loses reference to rest of list
-def delete_node_wrong(node):
-    node = node.next  # Just reassigns local variable!
-
-# RIGHT - modify the node's data and pointer
-def delete_node_correct(node):
-    node.val = node.next.val
-    node.next = node.next.next
-```
-
-### 3. Not Using Dummy Head When Needed
-
-```python
-# WRONG - complex head handling
-def remove_elements_wrong(head, val):
-    # Special case for head
-    while head and head.val == val:
-        head = head.next
-
-    if not head:
-        return None
-
-    current = head
-    while current.next:
-        if current.next.val == val:
-            current.next = current.next.next
-        else:
-            current = current.next
-    return head
-
-# RIGHT - dummy head simplifies
-def remove_elements_correct(head, val):
-    dummy = ListNode(0)
-    dummy.next = head
-    current = dummy
-
-    while current.next:
-        if current.next.val == val:
-            current.next = current.next.next
-        else:
-            current = current.next
-
-    return dummy.next
-```
-
-### 4. Wrong Loop Condition for Fast Pointer
-
-```python
-# WRONG - will crash
-def find_middle_wrong(head):
-    slow = fast = head
-    while fast:  # fast.next might be None!
-        slow = slow.next
-        fast = fast.next.next  # Crashes here if fast.next is None
-
-# RIGHT - check both fast and fast.next
-def find_middle_correct(head):
-    slow = fast = head
-    while fast and fast.next:
-        slow = slow.next
-        fast = fast.next.next
-    return slow
-```
-
-### 5. Not Terminating List Properly
-
-```python
-# WRONG - creates unexpected cycle
-def split_list_wrong(head, k):
-    current = head
-    for _ in range(k - 1):
-        current = current.next
-    second_half = current.next
-    # Forgot to set current.next = None!
-    return head, second_half
-
-# RIGHT - terminate first half
-def split_list_correct(head, k):
-    current = head
-    for _ in range(k - 1):
-        current = current.next
-    second_half = current.next
-    current.next = None  # Terminate first half
-    return head, second_half
-```
-
-### 6. Off-by-One Errors in K-Gap Problems
-
-```python
-# WRONG - off by one
-def remove_nth_wrong(head, n):
-    fast = slow = head
-    for _ in range(n):  # Should be n+1 for removal
-        fast = fast.next
-    while fast:
-        slow = slow.next
-        fast = fast.next
-    slow.next = slow.next.next  # Removes wrong node!
-    return head
-
-# RIGHT - move fast n+1 steps when using dummy
-def remove_nth_correct(head, n):
-    dummy = ListNode(0)
-    dummy.next = head
-    fast = slow = dummy
-    for _ in range(n + 1):  # n+1 steps
-        fast = fast.next
-    while fast:
-        slow = slow.next
-        fast = fast.next
-    slow.next = slow.next.next
-    return dummy.next
-```
-
-### 7. Modifying List While Traversing
-
-```python
-# WRONG - loses track during modification
-def reverse_wrong(head):
-    current = head
-    while current:
-        temp = current.next
-        current.next = ???  # We lost prev!
-        current = temp
-
-# RIGHT - maintain prev pointer
-def reverse_correct(head):
-    prev = None
-    current = head
-    while current:
-        next_node = current.next
-        current.next = prev
-        prev = current
-        current = next_node
+### Go — Singly Linked List Node and Core Templates
+```go
+type ListNode struct {
+    Val  int
+    Next *ListNode
+}
+
+func reverseList(head *ListNode) *ListNode {
+    var prev *ListNode
+    curr := head
+    for curr != nil {
+        next := curr.Next
+        curr.Next = prev
+        prev = curr
+        curr = next
+    }
     return prev
-```
+}
 
-### 8. Assuming List is Non-Circular
+func findMiddle(head *ListNode) *ListNode {
+    slow, fast := head, head
+    for fast != nil && fast.Next != nil {
+        slow = slow.Next
+        fast = fast.Next.Next
+    }
+    return slow
+}
 
-```python
-# WRONG - infinite loop if cycle exists
-def get_length_wrong(head):
-    count = 0
-    current = head
-    while current:  # Never ends if there's a cycle!
-        count += 1
-        current = current.next
-    return count
-
-# RIGHT - detect cycle first
-def get_length_correct(head):
-    if has_cycle(head):
-        return -1  # or handle appropriately
-    count = 0
-    current = head
-    while current:
-        count += 1
-        current = current.next
-    return count
+func mergeTwoLists(l1, l2 *ListNode) *ListNode {
+    dummy := &ListNode{}
+    tail := dummy
+    for l1 != nil && l2 != nil {
+        if l1.Val <= l2.Val {
+            tail.Next = l1
+            l1 = l1.Next
+        } else {
+            tail.Next = l2
+            l2 = l2.Next
+        }
+        tail = tail.Next
+    }
+    if l1 != nil {
+        tail.Next = l1
+    } else {
+        tail.Next = l2
+    }
+    return dummy.Next
+}
 ```
 
 ---
 
-## Quick Reference Cheat Sheet
+## Variant Subpatterns
 
+### 1. In-Place Reversal Variants
+- **Full reversal**: Reverse the entire list.
+- **Partial reversal**: Reverse between positions m and n (LC 92).
+- **K-group reversal**: Reverse in groups of k (LC 25).
+- **Alternating reversal**: Reverse every other group.
+
+### 2. Floyd's Cycle Detection (Tortoise and Hare)
+**Why it works — mathematical proof**:
+
+Suppose the list has a "tail" of length `a` before the cycle starts, and the cycle has length `C`. When slow enters the cycle, fast is already `a` steps into the cycle. The gap between them (from slow's perspective) is `C - (a mod C)`. Each step, fast gains 1 on slow, so they meet after `C - (a mod C)` more steps.
+
+At the meeting point, slow has traveled `a + (C - (a mod C))` steps. To find the cycle start: reset one pointer to head. Move both one step at a time. They meet at the cycle entrance because the distance from head to cycle start equals the distance from meeting point to cycle start (modulo cycle length).
+
+**Formal proof for finding cycle start**: Let the distance from head to cycle start be `a`, distance from cycle start to meeting point be `b`, and the remaining cycle length be `c` (so cycle length = `b + c`). At the meeting point, slow traveled `a + b` steps. Fast traveled `a + b + k(b + c)` for some integer k >= 1. Since fast moves at 2x speed: `2(a + b) = a + b + k(b + c)`, which gives `a + b = k(b + c)`, so `a = k(b + c) - b = (k-1)(b + c) + c`. This means: starting from the meeting point and walking `a` steps lands you at the cycle start (after going around the cycle k-1 times and then walking c more steps to the start). So two pointers — one from head, one from meeting point — both moving one step at a time, will meet at the cycle start after `a` steps.
+
+### 3. Dummy Node Technique
+When the head might change (deletion, merge, partition), create a dummy node to avoid special cases:
 ```python
-# 1. Basic traversal
-current = head
-while current:
-    # Process current
-    current = current.next
-
-# 2. Two-pointer (find middle/cycle)
-slow = fast = head
-while fast and fast.next:
-    slow = slow.next
-    fast = fast.next.next
-
-# 3. Dummy head for modifications
 dummy = ListNode(0)
 dummy.next = head
-# ... work with dummy
-return dummy.next
-
-# 4. Reversal template
-prev = None
-current = head
-while current:
-    next_node = current.next
-    current.next = prev
-    prev = current
-    current = next_node
-return prev
-
-# 5. K-gap for nth from end
-fast = slow = dummy
-for _ in range(n + 1):
-    fast = fast.next
-while fast:
-    slow = slow.next
-    fast = fast.next
+# ... modify list ...
+return dummy.next  # actual new head
 ```
 
-Remember: **Draw it out, handle edge cases, save references!**
+### 4. The "Runner" Technique
+Use fast/slow to split the list in half, then process each half differently. Classic use: reorder list (interleave first and reversed second half).
+
+### 5. Doubly Linked List + HashMap (LRU Cache Pattern)
+The most important linked list pattern for interviews. A DLL maintains access order; a hashmap provides O(1) lookup. Together they give O(1) get and O(1) put with LRU eviction. This is the foundational "combine two data structures" technique.
+
+---
+
+## Problem Walkthroughs
+
+---
+
+### Problem: Reverse Linked List (LC #206) — Easy
+**Companies**: Meta, Google, Amazon, Microsoft, Apple — asked in virtually every company's phone screen.
+
+**Problem**: Given the head of a singly linked list, reverse the list and return the reversed list.
+
+**Brute Force**: Copy values to array, reverse array, create new list.
+```python
+def reverse_list_brute(head: ListNode) -> ListNode:
+    vals = []
+    curr = head
+    while curr:
+        vals.append(curr.val)
+        curr = curr.next
+    vals.reverse()
+    dummy = ListNode(0)
+    curr = dummy
+    for v in vals:
+        curr.next = ListNode(v)
+        curr = curr.next
+    return dummy.next
+```
+Time: O(n), Space: O(n). Works but wastes space and creates new nodes.
+
+**Key Insight**: We do not need extra space. At each node, redirect the `next` pointer to point backward. We need three pointers: `prev` (the already-reversed portion), `curr` (current node), and `next_node` (saved so we do not lose the rest of the list).
+
+**Optimal Solution — Iterative**:
+```python
+def reverse_list(head: ListNode) -> ListNode:
+    prev = None
+    curr = head
+    while curr:
+        next_node = curr.next   # 1. save next
+        curr.next = prev        # 2. reverse link
+        prev = curr             # 3. advance prev
+        curr = next_node        # 4. advance curr
+    return prev
+```
+Time: O(n), Space: O(1).
+
+**Optimal Solution — Recursive**:
+```python
+def reverse_list_recursive(head: ListNode) -> ListNode:
+    if not head or not head.next:
+        return head
+    new_head = reverse_list_recursive(head.next)
+    head.next.next = head  # the node after head points back to head
+    head.next = None       # head now points to None (end of reversed portion)
+    return new_head
+```
+Time: O(n), Space: O(n) call stack.
+
+**Dry Run** with `1 -> 2 -> 3 -> None`:
+```
+Step 0: prev=None, curr=1
+Step 1: next_node=2, 1->None, prev=1, curr=2
+Step 2: next_node=3, 2->1, prev=2, curr=3
+Step 3: next_node=None, 3->2, prev=3, curr=None
+Return prev=3: 3 -> 2 -> 1 -> None
+```
+
+**Edge Cases**: Empty list (return None), single node (return node), two nodes.
+
+**Follow-up Questions**:
+- Can you reverse a sublist from position m to n? (LC 92)
+- Can you do it recursively? What is the space complexity of the recursive version?
+- Reverse in groups of k? (LC 25)
+
+---
+
+### Problem: Linked List Cycle (LC #141) — Easy
+**Companies**: Meta, Amazon, Microsoft, Bloomberg.
+
+**Problem**: Given head, determine if the linked list has a cycle.
+
+**Brute Force**: Use a hash set to track visited nodes.
+```python
+def has_cycle_brute(head: ListNode) -> bool:
+    visited = set()
+    curr = head
+    while curr:
+        if id(curr) in visited:
+            return True
+        visited.add(id(curr))
+        curr = curr.next
+    return False
+```
+Time: O(n), Space: O(n).
+
+**Key Insight**: Floyd's Cycle Detection — use two pointers moving at different speeds. If there is a cycle, the fast pointer will eventually lap the slow pointer and they will meet. If there is no cycle, fast reaches the end. Think of two runners on a circular track: the faster one always catches the slower one.
+
+**Optimal Solution**:
+```python
+def has_cycle(head: ListNode) -> bool:
+    slow = fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+        if slow == fast:
+            return True
+    return False
+```
+Time: O(n), Space: O(1).
+
+**Dry Run** with `1 -> 2 -> 3 -> 4 -> 2 (cycle back to node 2)`:
+```
+Step 0: slow=1, fast=1
+Step 1: slow=2, fast=3
+Step 2: slow=3, fast=2 (fast went 4->2 via cycle)
+Step 3: slow=4, fast=4 => slow == fast, return True
+```
+
+**Finding the cycle start (LC #142)**:
+After slow and fast meet, reset one pointer to head. Move both one step at a time. Where they meet is the cycle start.
+```python
+def detect_cycle(head: ListNode) -> ListNode:
+    slow = fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+        if slow == fast:
+            # Found cycle, now find entrance
+            slow = head
+            while slow != fast:
+                slow = slow.next
+                fast = fast.next
+            return slow
+    return None
+```
+
+**Why finding the start works**: Let the distance from head to cycle start be `a`, distance from cycle start to meeting point be `b`, and the remaining cycle be `c` (cycle length = `b + c`). At meeting: slow traveled `a + b`, fast traveled `a + b + k(b + c)`. Since fast = 2 * slow: `2(a + b) = a + b + k(b + c)`, giving `a + b = k(b + c)`, so `a = (k-1)(b + c) + c`. Starting from the meeting point (which is `b` into the cycle), walking `a` more steps goes around the cycle `k-1` complete times plus `c` more steps, landing exactly at the cycle start.
+
+**Edge Cases**: Empty list, single node, single node with self-loop, no cycle.
+
+**Follow-up Questions**:
+- What is the length of the cycle? (After finding the meeting point, keep one pointer still and advance the other until they meet again; count the steps.)
+- Can you find the start of the cycle? Explain the math.
+- What if you cannot modify the list and cannot use extra space?
+
+---
+
+### Problem: Merge Two Sorted Lists (LC #21) — Easy
+**Companies**: Meta, Amazon, Google, Microsoft, Apple.
+
+**Problem**: Merge two sorted linked lists and return it as a sorted list.
+
+**Brute Force**: Collect all values, sort, create new list.
+```python
+def merge_brute(l1: ListNode, l2: ListNode) -> ListNode:
+    vals = []
+    while l1:
+        vals.append(l1.val)
+        l1 = l1.next
+    while l2:
+        vals.append(l2.val)
+        l2 = l2.next
+    vals.sort()
+    dummy = ListNode(0)
+    curr = dummy
+    for v in vals:
+        curr.next = ListNode(v)
+        curr = curr.next
+    return dummy.next
+```
+Time: O((m+n) log(m+n)), Space: O(m+n).
+
+**Key Insight**: Both lists are already sorted. Use a dummy node and a tail pointer. At each step, compare the heads of both lists and append the smaller one. This is exactly the merge step of merge sort.
+
+**Optimal Solution**:
+```python
+def merge_two_lists(l1: ListNode, l2: ListNode) -> ListNode:
+    dummy = ListNode(0)
+    tail = dummy
+    while l1 and l2:
+        if l1.val <= l2.val:
+            tail.next = l1
+            l1 = l1.next
+        else:
+            tail.next = l2
+            l2 = l2.next
+        tail = tail.next
+    tail.next = l1 if l1 else l2
+    return dummy.next
+```
+Time: O(m + n), Space: O(1) — we reuse existing nodes.
+
+**Recursive version**:
+```python
+def merge_two_lists_recursive(l1: ListNode, l2: ListNode) -> ListNode:
+    if not l1:
+        return l2
+    if not l2:
+        return l1
+    if l1.val <= l2.val:
+        l1.next = merge_two_lists_recursive(l1.next, l2)
+        return l1
+    else:
+        l2.next = merge_two_lists_recursive(l1, l2.next)
+        return l2
+```
+
+**Dry Run** with `l1: 1->3->5, l2: 2->4->6`:
+```
+dummy -> ?
+Step 1: 1 <= 2, tail.next = 1, l1 = 3. List: dummy -> 1
+Step 2: 3 > 2,  tail.next = 2, l2 = 4. List: dummy -> 1 -> 2
+Step 3: 3 <= 4, tail.next = 3, l1 = 5. List: dummy -> 1 -> 2 -> 3
+Step 4: 5 > 4,  tail.next = 4, l2 = 6. List: dummy -> 1 -> 2 -> 3 -> 4
+Step 5: 5 <= 6, tail.next = 5, l1 = None. List: dummy -> 1->2->3->4->5
+Append remaining: tail.next = 6. Final: 1->2->3->4->5->6
+```
+
+**Edge Cases**: One or both lists empty, lists of different lengths, duplicate values.
+
+**Follow-up Questions**:
+- Merge K sorted lists? (LC 23 — see below)
+- What if lists have duplicates and you want to deduplicate?
+- Can you do it recursively? What is the stack depth?
+
+---
+
+### Problem: Reorder List (LC #143) — Medium
+**Companies**: Meta, Amazon, Microsoft, Bloomberg.
+
+**Problem**: Given `L0 -> L1 -> ... -> Ln-1 -> Ln`, reorder to `L0 -> Ln -> L1 -> Ln-1 -> L2 -> Ln-2 -> ...`. Do it in-place.
+
+**Brute Force**: Store nodes in an array, then rewire using two pointers from both ends.
+```python
+def reorder_list_brute(head: ListNode) -> None:
+    if not head:
+        return
+    nodes = []
+    curr = head
+    while curr:
+        nodes.append(curr)
+        curr = curr.next
+    left, right = 0, len(nodes) - 1
+    while left < right:
+        nodes[left].next = nodes[right]
+        left += 1
+        if left == right:
+            break
+        nodes[right].next = nodes[left]
+        right -= 1
+    nodes[left].next = None
+```
+Time: O(n), Space: O(n).
+
+**Key Insight**: This is a three-step process that avoids extra space:
+1. Find the middle using slow/fast pointers.
+2. Reverse the second half.
+3. Merge the two halves by alternating nodes.
+
+This is the "runner" technique at its best — it composes three fundamental operations.
+
+**Optimal Solution**:
+```python
+def reorder_list(head: ListNode) -> None:
+    if not head or not head.next:
+        return
+
+    # Step 1: Find middle (slow stops at the end of first half)
+    slow, fast = head, head
+    while fast.next and fast.next.next:
+        slow = slow.next
+        fast = fast.next.next
+
+    # Step 2: Reverse second half
+    prev = None
+    curr = slow.next
+    slow.next = None  # cut the list in two
+    while curr:
+        next_node = curr.next
+        curr.next = prev
+        prev = curr
+        curr = next_node
+    # prev is the head of the reversed second half
+
+    # Step 3: Merge/interleave the two halves
+    first, second = head, prev
+    while second:
+        tmp1 = first.next
+        tmp2 = second.next
+        first.next = second
+        second.next = tmp1
+        first = tmp1
+        second = tmp2
+```
+Time: O(n), Space: O(1).
+
+**Dry Run** with `1 -> 2 -> 3 -> 4 -> 5`:
+```
+Step 1 (find middle): slow stops at 3. Cut: first = 1->2->3, second = 4->5
+Step 2 (reverse second): 5->4->None
+Step 3 (merge):
+  first=1, second=5: 1->5->2, first=2, second=4
+  first=2, second=4: 2->4->3, first=3, second=None
+  second is None, stop.
+Result: 1->5->2->4->3->None
+```
+
+**Edge Cases**: Single node, two nodes, odd vs even length lists.
+
+**Follow-up Questions**:
+- What if you need to return a new list instead of modifying in place?
+- How would you generalize this to interleave every k-th node from the end?
+- Can you do this with a stack instead of reversing?
+
+---
+
+### Problem: LRU Cache (LC #146) — Medium
+**Companies**: Meta (#1 most asked), Amazon, Google, Microsoft, Bloomberg, Apple, Uber.
+
+This is the single most important linked list problem for FAANG interviews. At Meta, it appears in a large fraction of coding rounds. You must be able to implement it from scratch, explain every design decision, and handle follow-ups.
+
+**Problem**: Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.
+- `LRUCache(int capacity)` — Initialize the cache with positive size capacity.
+- `int get(int key)` — Return the value if key exists, otherwise return -1.
+- `void put(int key, int value)` — Update the value if key exists. Otherwise, add the key-value pair. If the number of keys exceeds capacity, evict the least recently used key.
+
+Both operations must be O(1) average time.
+
+**Why O(1) is hard — the design reasoning**:
+- A **hashmap** gives O(1) lookup but does not track access order.
+- A **queue/deque** tracks insertion order but does not give O(1) arbitrary removal.
+- An **array** could track order, but deletion from the middle is O(n).
+- We need O(1) lookup AND O(1) arbitrary removal AND O(1) insertion at a specific position. The only data structure that gives O(1) removal when you have a reference to the node is a **doubly linked list**.
+
+**Key Insight**: Combine a **doubly linked list** (for O(1) removal and move-to-front) with a **hashmap** (for O(1) key-to-node lookup). The DLL maintains access order: most recently used at the head, least recently used at the tail. The hashmap maps keys directly to DLL nodes.
+
+**Architecture**:
+```
+HashMap: key -> DLL Node
+DLL:    HEAD <-> [most recent] <-> ... <-> [least recent] <-> TAIL
+         ^sentinel                                           ^sentinel
+```
+
+Why doubly linked? Because when we access a node, we need to:
+1. Remove it from its current position (need prev pointer for O(1) removal).
+2. Insert it right after head (O(1)).
+With a singly linked list, removal would require finding the predecessor — O(n).
+
+Why sentinel nodes (dummy head and tail)? They eliminate ALL edge cases for empty list, single element, removing from head or tail. Without sentinels, every pointer update needs a conditional check.
+
+**Optimal Solution — Step by Step Build**:
+```python
+class DLLNode:
+    """Doubly linked list node storing key-value pair."""
+    def __init__(self, key: int = 0, val: int = 0):
+        self.key = key
+        self.val = val
+        self.prev = None
+        self.next = None
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.cache = {}  # key -> DLLNode
+
+        # Sentinel nodes — head.next is MRU, tail.prev is LRU
+        self.head = DLLNode()
+        self.tail = DLLNode()
+        self.head.next = self.tail
+        self.tail.prev = self.head
+
+    def _remove(self, node: DLLNode) -> None:
+        """Remove a node from its current position in the DLL.
+        O(1) because we have direct access to prev and next."""
+        node.prev.next = node.next
+        node.next.prev = node.prev
+
+    def _add_to_front(self, node: DLLNode) -> None:
+        """Insert a node right after head (most recently used position).
+        Four pointer updates — draw this out on paper to see why."""
+        node.prev = self.head
+        node.next = self.head.next
+        self.head.next.prev = node
+        self.head.next = node
+
+    def _move_to_front(self, node: DLLNode) -> None:
+        """Move existing node to the front (mark as most recently used)."""
+        self._remove(node)
+        self._add_to_front(node)
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        node = self.cache[key]
+        self._move_to_front(node)  # Mark as recently used
+        return node.val
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            # Update existing entry
+            node = self.cache[key]
+            node.val = value
+            self._move_to_front(node)
+        else:
+            # Add new entry
+            if len(self.cache) >= self.capacity:
+                # Evict LRU (node just before tail sentinel)
+                lru = self.tail.prev
+                self._remove(lru)
+                del self.cache[lru.key]  # WHY we store key in the node!
+            new_node = DLLNode(key, value)
+            self.cache[key] = new_node
+            self._add_to_front(new_node)
+```
+Time: O(1) for both get and put. Space: O(capacity).
+
+**Critical design detail — why we store `key` in the DLL node**: When evicting the LRU entry, we walk to `tail.prev` to get the node to evict. But we also need to remove its entry from the hashmap, which requires the key. If the key were not stored in the node, we would need to search the hashmap for the matching node — O(n). Storing the key in the node makes eviction O(1).
+
+**Detailed Dry Run** with capacity=2:
+```
+Initial state:
+  cache = {}, DLL: HEAD <-> TAIL
+
+put(1, 1):
+  Key 1 not in cache. Cache not full (0 < 2).
+  Create Node(key=1, val=1), add to front, add to cache.
+  cache = {1: Node(1,1)}
+  DLL: HEAD <-> (1,1) <-> TAIL
+
+put(2, 2):
+  Key 2 not in cache. Cache not full (1 < 2).
+  Create Node(key=2, val=2), add to front, add to cache.
+  cache = {1: Node(1,1), 2: Node(2,2)}
+  DLL: HEAD <-> (2,2) <-> (1,1) <-> TAIL
+                ^MRU       ^LRU
+
+get(1) -> returns 1:
+  Key 1 in cache. Move Node(1,1) to front.
+  DLL: HEAD <-> (1,1) <-> (2,2) <-> TAIL
+                ^MRU       ^LRU
+
+put(3, 3):
+  Key 3 not in cache. Cache IS full (2 >= 2).
+  Evict LRU: tail.prev = Node(2,2). Remove from DLL and delete cache[2].
+  Create Node(key=3, val=3), add to front.
+  cache = {1: Node(1,1), 3: Node(3,3)}
+  DLL: HEAD <-> (3,3) <-> (1,1) <-> TAIL
+
+get(2) -> returns -1:
+  Key 2 not in cache (it was evicted).
+
+put(4, 4):
+  Key 4 not in cache. Cache IS full (2 >= 2).
+  Evict LRU: tail.prev = Node(1,1). Remove from DLL and delete cache[1].
+  Create Node(key=4, val=4), add to front.
+  cache = {3: Node(3,3), 4: Node(4,4)}
+  DLL: HEAD <-> (4,4) <-> (3,3) <-> TAIL
+```
+
+**Alternative — Python OrderedDict** (know this but do NOT use in interview):
+```python
+from collections import OrderedDict
+
+class LRUCache:
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.cache = OrderedDict()
+
+    def get(self, key: int) -> int:
+        if key not in self.cache:
+            return -1
+        self.cache.move_to_end(key)
+        return self.cache[key]
+
+    def put(self, key: int, value: int) -> None:
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        self.cache[key] = value
+        if len(self.cache) > self.capacity:
+            self.cache.popitem(last=False)  # Remove oldest (front)
+```
+
+**WARNING**: Most interviewers at Meta/Google will NOT accept the OrderedDict solution. They want you to implement the DLL + hashmap from scratch. Mention OrderedDict as "in production I would use this", then implement the full version.
+
+**Edge Cases**: Capacity of 1, updating an existing key's value, getting a key that was evicted, putting the same key multiple times with different values.
+
+**Follow-up Questions**:
+- **Thread safety**: Wrap get/put with a mutex. For higher throughput, use a read-write lock (reads can be concurrent if we separate the "move to front" concern) or sharded LRU caches.
+- **What if capacity can change dynamically?** Evict entries from the tail until size <= new capacity.
+- **Implement LFU Cache** (LC 460). Frequency-based eviction — much harder, requires frequency buckets.
+- **How does Redis implement LRU?** Redis uses approximated LRU with random sampling (pick N random keys, evict the one with the oldest access time). This is O(1) without maintaining a DLL.
+- **What is the time complexity of each operation? Prove it.** Each operation does a constant number of hashmap lookups (O(1) average) and DLL pointer manipulations (O(1)), so everything is O(1) amortized.
+- **What about cache stampede?** When a popular key is evicted and many requests try to recompute it simultaneously. Solutions: locking per key, "stale-while-revalidate".
+
+---
+
+### Problem: Copy List with Random Pointer (LC #138) — Medium
+**Companies**: Meta, Amazon, Microsoft, Bloomberg.
+
+**Problem**: A linked list has nodes with a `next` pointer and a `random` pointer that can point to any node or null. Make a deep copy.
+
+```python
+class Node:
+    def __init__(self, val=0, next=None, random=None):
+        self.val = val
+        self.next = next
+        self.random = random
+```
+
+**Brute Force / Hashmap Approach** (this is actually clean and preferred in interviews):
+```python
+def copy_random_list_hashmap(head: 'Node') -> 'Node':
+    if not head:
+        return None
+    old_to_new = {}
+    # First pass: create all new nodes
+    curr = head
+    while curr:
+        old_to_new[curr] = Node(curr.val)
+        curr = curr.next
+    # Second pass: set next and random pointers
+    curr = head
+    while curr:
+        old_to_new[curr].next = old_to_new.get(curr.next)
+        old_to_new[curr].random = old_to_new.get(curr.random)
+        curr = curr.next
+    return old_to_new[head]
+```
+Time: O(n), Space: O(n) for the hashmap.
+
+**Key Insight for O(1) space**: Interleave copied nodes with originals. For each original node A, insert A' (the copy) right after A. Now `A.random.next` gives us A's copy's random target. After setting random pointers, separate the lists.
+
+**Optimal Solution — O(1) Space (Interleaving)**:
+```python
+def copy_random_list(head: 'Node') -> 'Node':
+    if not head:
+        return None
+
+    # Step 1: Interleave copies after originals
+    # A -> B -> C  becomes  A -> A' -> B -> B' -> C -> C'
+    curr = head
+    while curr:
+        copy = Node(curr.val)
+        copy.next = curr.next
+        curr.next = copy
+        curr = copy.next
+
+    # Step 2: Set random pointers for copies
+    curr = head
+    while curr:
+        if curr.random:
+            curr.next.random = curr.random.next
+        curr = curr.next.next
+
+    # Step 3: Separate the two interleaved lists
+    new_head = head.next
+    curr = head
+    while curr:
+        copy = curr.next
+        curr.next = copy.next
+        copy.next = copy.next.next if copy.next else None
+        curr = curr.next
+
+    return new_head
+```
+Time: O(n), Space: O(1) (not counting the output list).
+
+**Dry Run** with `A(random->C) -> B(random->A) -> C(random->B)`:
+```
+Step 1 (interleave): A -> A' -> B -> B' -> C -> C' -> None
+Step 2 (random pointers):
+  A.random = C, so A'.random = C.next = C'
+  B.random = A, so B'.random = A.next = A'
+  C.random = B, so C'.random = B.next = B'
+Step 3 (separate):
+  Original: A -> B -> C -> None
+  Copy:     A'(random=C') -> B'(random=A') -> C'(random=B') -> None
+```
+
+**Edge Cases**: Empty list, single node with random = None, single node with random = self, all random pointers are null.
+
+**Follow-up Questions**:
+- What if the structure is a general graph? (BFS/DFS clone with hashmap.)
+- Can you do this recursively? (Yes, with a hashmap to track already-cloned nodes.)
+- How would you handle this in a language without garbage collection? (Careful memory management — who owns the old_to_new map?)
+
+---
+
+### Problem: Reverse Nodes in k-Group (LC #25) — Hard
+**Companies**: Meta, Amazon, Google, Microsoft.
+
+**Problem**: Given a linked list, reverse the nodes k at a time. If the remaining nodes are fewer than k, leave them as-is.
+
+**Brute Force**: Store nodes in an array, reverse in chunks, rewire.
+```python
+def reverse_k_group_brute(head: ListNode, k: int) -> ListNode:
+    if not head or k == 1:
+        return head
+    nodes = []
+    curr = head
+    while curr:
+        nodes.append(curr)
+        curr = curr.next
+    for i in range(0, len(nodes) - k + 1, k):
+        left, right = i, i + k - 1
+        while left < right:
+            nodes[left], nodes[right] = nodes[right], nodes[left]
+            left += 1
+            right -= 1
+    for i in range(len(nodes) - 1):
+        nodes[i].next = nodes[i + 1]
+    nodes[-1].next = None
+    return nodes[0]
+```
+Time: O(n), Space: O(n).
+
+**Key Insight**: Process k nodes at a time. For each group: (1) check if k nodes remain, (2) reverse them using the standard reversal technique, (3) connect the reversed group to the previous group's tail. A dummy node handles the first group cleanly.
+
+**Optimal Solution**:
+```python
+def reverse_k_group(head: ListNode, k: int) -> ListNode:
+    # First count total nodes
+    count = 0
+    curr = head
+    while curr:
+        count += 1
+        curr = curr.next
+
+    dummy = ListNode(0)
+    dummy.next = head
+    prev_group_end = dummy
+
+    while count >= k:
+        # Reverse k nodes starting from prev_group_end.next
+        prev = None
+        curr = prev_group_end.next
+        group_start = curr  # this node will become the tail after reversal
+        for _ in range(k):
+            next_node = curr.next
+            curr.next = prev
+            prev = curr
+            curr = next_node
+        # Now: prev = new head of reversed group
+        #      curr = start of next group (or None)
+        #      group_start = tail of reversed group
+        prev_group_end.next = prev       # connect previous part to new head
+        group_start.next = curr          # connect tail to next group
+        prev_group_end = group_start     # advance for next iteration
+        count -= k
+
+    return dummy.next
+```
+Time: O(n), Space: O(1).
+
+**Recursive Solution** (elegant but O(n/k) stack space):
+```python
+def reverse_k_group_recursive(head: ListNode, k: int) -> ListNode:
+    # Check if we have k nodes left
+    curr = head
+    for _ in range(k):
+        if not curr:
+            return head  # fewer than k nodes, return as-is
+        curr = curr.next
+
+    # Reverse first k nodes
+    prev = None
+    curr = head
+    for _ in range(k):
+        next_node = curr.next
+        curr.next = prev
+        prev = curr
+        curr = next_node
+
+    # head is now the tail of the reversed group
+    # Recursively process remaining and connect
+    head.next = reverse_k_group_recursive(curr, k)
+    return prev  # prev is the new head of this group
+```
+
+**Dry Run** with `1->2->3->4->5, k=3`:
+```
+count = 5, dummy->1->2->3->4->5
+
+Group 1 (count=5 >= 3):
+  Reverse 1->2->3:
+    prev=None, curr=1: next=2, 1->None, prev=1, curr=2
+    prev=1, curr=2: next=3, 2->1, prev=2, curr=3
+    prev=2, curr=3: next=4, 3->2, prev=3, curr=4
+  Connect: dummy->3->2->1->4->5
+  prev_group_end = node(1), count = 2
+
+Group 2 (count=2 < 3): stop.
+
+Result: 3->2->1->4->5
+```
+
+**Edge Cases**: k=1 (no change), k equals list length (full reversal), single node, k > list length (no change).
+
+**Follow-up Questions**:
+- What if you should also reverse the last partial group?
+- Can you solve it iteratively with O(1) space? (Yes, as shown above.)
+- What about alternating: reverse k, skip k, reverse k, skip k?
+
+---
+
+### Problem: Merge K Sorted Lists (LC #23) — Hard
+**Companies**: Meta, Amazon, Google, Microsoft, Uber.
+
+**Problem**: Given an array of k linked lists, each sorted in ascending order, merge all into one sorted list.
+
+**Brute Force**: Collect all values, sort, build new list.
+```python
+def merge_k_lists_brute(lists):
+    vals = []
+    for l in lists:
+        curr = l
+        while curr:
+            vals.append(curr.val)
+            curr = curr.next
+    vals.sort()
+    dummy = ListNode(0)
+    curr = dummy
+    for v in vals:
+        curr.next = ListNode(v)
+        curr = curr.next
+    return dummy.next
+```
+Time: O(N log N) where N = total nodes. Space: O(N).
+
+**Approach 2 — Min Heap**: Maintain a min-heap of size k with the current head of each list. Extract min, append to result, push that list's next node.
+
+```python
+import heapq
+
+def merge_k_lists_heap(lists):
+    heap = []
+    for i, l in enumerate(lists):
+        if l:
+            heapq.heappush(heap, (l.val, i, l))
+
+    dummy = ListNode(0)
+    tail = dummy
+    while heap:
+        val, i, node = heapq.heappop(heap)
+        tail.next = node
+        tail = tail.next
+        if node.next:
+            heapq.heappush(heap, (node.next.val, i, node.next))
+
+    return dummy.next
+```
+Time: O(N log k) — each of the N nodes is pushed/popped once, each operation is O(log k).
+Space: O(k) for the heap.
+
+Note: The `i` (index) tiebreaker is critical — without it, Python will try to compare ListNode objects when values are equal, causing an error.
+
+**Key Insight for Divide and Conquer**: Pair up lists and merge each pair using the merge-two-sorted-lists algorithm. Repeat until one list remains. This is the merge phase of merge sort applied to the list-of-lists level.
+
+**Optimal Solution — Divide and Conquer**:
+```python
+def merge_k_lists(lists):
+    if not lists:
+        return None
+
+    def merge_two(l1, l2):
+        dummy = ListNode(0)
+        tail = dummy
+        while l1 and l2:
+            if l1.val <= l2.val:
+                tail.next = l1
+                l1 = l1.next
+            else:
+                tail.next = l2
+                l2 = l2.next
+            tail = tail.next
+        tail.next = l1 or l2
+        return dummy.next
+
+    while len(lists) > 1:
+        merged = []
+        for i in range(0, len(lists), 2):
+            l1 = lists[i]
+            l2 = lists[i + 1] if i + 1 < len(lists) else None
+            merged.append(merge_two(l1, l2))
+        lists = merged
+
+    return lists[0]
+```
+Time: O(N log k) — log k rounds of merging, each touching all N nodes.
+Space: O(1) extra beyond the result (we reuse existing nodes).
+
+**Dry Run** with `lists = [[1,4,5], [1,3,4], [2,6]]`:
+```
+Round 1:
+  Merge [1,4,5] + [1,3,4] = [1,1,3,4,4,5]
+  Carry [2,6] (odd one out)
+  lists = [[1,1,3,4,4,5], [2,6]]
+
+Round 2:
+  Merge [1,1,3,4,4,5] + [2,6] = [1,1,2,3,4,4,5,6]
+  lists = [[1,1,2,3,4,4,5,6]]
+
+Result: 1->1->2->3->4->4->5->6
+```
+
+**Heap vs Divide-and-Conquer Trade-offs**:
+| Aspect | Heap | D&C |
+|--------|------|-----|
+| Time | O(N log k) | O(N log k) |
+| Space | O(k) | O(1) extra |
+| Streaming | Yes — handles new lists arriving | No — needs all lists upfront |
+| Implementation | Need custom comparison | Simpler if you have merge-two |
+
+**Edge Cases**: Empty lists array, lists containing empty lists, single list, all lists are single nodes, k = 0.
+
+**Follow-up Questions**:
+- When would you prefer heap over divide-and-conquer? (Streaming scenario — lists arrive over time.)
+- What if lists are not sorted? (Sort each first: O(N log(N/k)) + O(N log k) = O(N log N).)
+- How does this relate to external sorting of large files that do not fit in memory? (External merge sort uses the same k-way merge pattern with a heap.)
+- What is the optimal k for external sorting? (Depends on disk I/O and memory — typically k = memory / block_size.)
+
+---
+
+## Common Mistakes & Interview Tips
+
+### Mistakes to Avoid
+1. **Forgetting to save `next` before overwriting** — In reversal, always save `curr.next` before setting `curr.next = prev`.
+2. **Not handling None/null** — Always check `node is not None` before accessing `node.next` or `node.val`.
+3. **Losing the head** — After modifying a list, ensure you still reference the correct head. Dummy nodes prevent this.
+4. **Creating accidental cycles** — When rewiring `next` pointers, ensure the list terminates with `None`. Draw the state after each step.
+5. **Off-by-one in slow/fast** — For finding the middle:
+   - `while fast and fast.next` → slow lands on second middle (even length).
+   - `while fast.next and fast.next.next` → slow lands on first middle (even length).
+   Pick the right one for your problem.
+6. **Not storing key in LRU node** — Without the key in the DLL node, you cannot delete from the hashmap during eviction.
+7. **Forgetting sentinel-to-sentinel connection** — In LRU Cache, head.next must start as tail, and tail.prev must start as head.
+
+### Interview Tips
+1. **Draw pictures** — Linked list problems are visual. Draw boxes and arrows on the whiteboard at every step.
+2. **Use dummy nodes liberally** — They eliminate 90% of edge cases for free.
+3. **State your approach before coding** — "I will use the fast/slow pointer technique to find the middle, then reverse the second half, then interleave."
+4. **Handle edge cases explicitly** — Empty list, single node, two nodes. Mention these even if your code already handles them.
+5. **Know the time and space complexity** — Be prepared to explain why Floyd's is O(n), not O(n^2).
+6. **For LRU Cache, practice drawing the DLL state** — Interviewers love to see you trace through put/get operations step by step on the whiteboard.
+7. **Recursive vs iterative** — Know both for every problem. Recursive is often cleaner but uses O(n) stack space. Iterative is O(1) space. Be ready to discuss the trade-off.
+8. **Practice the 4-line reversal until it is muscle memory**: save next, reverse link, advance prev, advance curr.
+
+---
+
+## Pattern Connections
+
+| Pattern | Connection to Linked Lists |
+|---------|---------------------------|
+| **Two Pointers** | Slow/fast is a two-pointer technique. Same mental model as array two pointers. |
+| **Merge Sort** | Merge two sorted lists is the merge step. Linked list merge sort is a classic D&C problem. |
+| **Design Patterns** | LRU/LFU Cache uses DLL + HashMap. Many OOD problems use linked lists internally. |
+| **Stack/Queue** | Both can be implemented with linked lists. Recursion on linked lists is essentially using the call stack. |
+| **Divide and Conquer** | Merge K sorted lists, sort list (merge sort on linked list). |
+| **Heap** | Alternative for merge K sorted lists. Min-heap over list heads for streaming merge. |
+| **Hash Map** | Used alongside linked lists in LRU Cache, Copy Random Pointer, and cycle detection (brute). |
+| **Recursion** | Many linked list problems have elegant recursive solutions (reverse, merge, k-group). |
+
+### Progression Path
+```
+Reverse List (206) -> Reverse Between (92) -> Reverse K-Group (25)
+Merge Two (21) -> Merge K (23) -> Sort List (148)
+Cycle Detection (141) -> Cycle Start (142) -> Happy Number (202)
+Reorder List (143) = Find Middle + Reverse + Merge
+LRU Cache (146) -> LFU Cache (460) -> All O(1) DS (432)
+Copy Random Pointer (138) -> Clone Graph (133)
+```

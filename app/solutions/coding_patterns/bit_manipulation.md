@@ -1,1065 +1,924 @@
-# Bit Manipulation Pattern Guide
+# Bit Manipulation — Complete Interview Guide
 
-## 1. What is Bit Manipulation?
+## When to Use This Pattern
 
-### Explain Like I'm 5
-Imagine you have a row of light switches. Each switch can be either ON (1) or OFF (0). Bit manipulation is like playing with these switches - you can flip them, check if they're on, or do special tricks like "turn on all switches that are off" or "find the one switch that's different from all others."
+### Signals That Point to Bit Manipulation
+1. **"Find the unique element"** — XOR-based problems where elements appear in pairs except one.
+2. **The problem involves powers of 2** — checking, counting, or generating powers of 2.
+3. **Bitmask / subset enumeration** — representing subsets as integers, iterating over all subsets.
+4. **Space-constrained counting** — counting bits, reversing bits, or manipulating binary representations.
+5. **"Do X without using arithmetic operators"** — add, subtract, multiply without +, -, *.
+6. **Feature flags, permissions, or state encoding** — using individual bits to represent boolean states.
 
-When you count in regular numbers (1, 2, 3, 4...), computers actually count using only 0s and 1s:
-- 0 = `0000`
-- 1 = `0001`
-- 2 = `0010`
-- 3 = `0011`
-- 4 = `0100`
-- 5 = `0101`
+### When NOT to Use
+- If the numbers are very large (arbitrary precision) — bit tricks rely on fixed-width integers.
+- If the problem is about string patterns or graph traversal — bit manipulation is rarely the core technique.
+- If a simpler mathematical solution exists — do not force bit manipulation for cleverness.
 
-Bit manipulation lets you work directly with these 0s and 1s to solve problems super fast!
+---
 
-### Technical Definition
-Bit manipulation involves performing operations directly on the binary representation of numbers. Instead of treating numbers as decimal values, we work with their underlying binary bits using bitwise operators. This allows for extremely efficient algorithms with O(1) space complexity and often O(1) or O(log n) time complexity for operations that would otherwise require more complex data structures.
+## Core Mechanics
 
-## 2. Real-World Analogy
-
-### The Permission Flags System
-Think of Unix file permissions (read, write, execute):
-- **Read = 4** (binary: `100`)
-- **Write = 2** (binary: `010`)
-- **Execute = 1** (binary: `001`)
-
-To give read and write permissions: `4 + 2 = 6` (binary: `110`)
-To check if someone has write permission: Check if the 2nd bit is set
-To remove write permission: Use bit masking
-
-This is exactly how operating systems, game engines, and embedded systems manage flags and states efficiently!
-
-### Another Example: Network Subnet Masks
-IP addresses use bit manipulation for subnet masks:
-- IP: `192.168.1.100`
-- Mask: `255.255.255.0`
-- Bitwise AND gives you the network address
-
-## 3. When to Use Bit Manipulation
-
-### Clear Signals
-✅ **Use bit manipulation when you see:**
-1. **XOR properties needed** - Finding unique elements, missing numbers
-2. **Power of 2 operations** - Checking if a number is a power of 2
-3. **Set operations** - Union, intersection, difference on sets
-4. **Optimization requirements** - Space O(1), very fast operations
-5. **Counting bits** - Hamming weight, counting set bits
-6. **Even/odd checks** - Quick parity checking
-7. **Swapping without temp variable**
-8. **Range of numbers is small** - Using bitmasks (e.g., 26 letters)
-9. **Multiple boolean flags** - Compact storage
-10. **Binary representation matters** - Bit reversal, Gray code
-
-### Keywords to Watch For
-- "Find the single/unique element"
-- "All elements appear twice except one"
-- "Power of two"
-- "Count number of 1s/0s"
-- "Missing number in sequence"
-- "XOR properties"
-- "Subset generation"
-- "Minimal space complexity"
-
-## 4. The Problems
-
-### Problem 1: Single Number (LeetCode #136)
-**Given:** Array where every element appears twice except one
-**Find:** The single element
-**Example:** `[4, 1, 2, 1, 2]` → `4`
-
-### Problem 2: Number of 1 Bits (LeetCode #191)
-**Given:** An integer
-**Find:** Number of '1' bits (Hamming weight)
-**Example:** `11` (binary: `1011`) → `3`
-
-### Problem 3: Power of Two (LeetCode #231)
-**Given:** An integer n
-**Find:** Is it a power of 2?
-**Example:** `16` → `true`, `18` → `false`
-
-## 5. Brute Force Approaches
-
-### Problem 1: Single Number - Using HashMap
-```python
-def singleNumber_bruteforce(nums):
-    """
-    Time: O(n), Space: O(n)
-    Uses extra space to count occurrences
-    """
-    count = {}
-
-    # Count occurrences of each number
-    for num in nums:
-        count[num] = count.get(num, 0) + 1
-
-    # Find the number that appears once
-    for num, freq in count.items():
-        if freq == 1:
-            return num
-
-    return -1
-
-# Example
-nums = [4, 1, 2, 1, 2]
-print(singleNumber_bruteforce(nums))  # Output: 4
+### Binary Number Representation
+Every integer is stored as a sequence of bits. In a 32-bit system:
+```
+ 5 = 00000000 00000000 00000000 00000101
+-5 = 11111111 11111111 11111111 11111011  (two's complement)
 ```
 
-### Problem 2: Number of 1 Bits - Division Method
-```python
-def hammingWeight_bruteforce(n):
-    """
-    Time: O(log n), Space: O(1)
-    Converts to binary string and counts '1's
-    """
-    count = 0
-    while n > 0:
-        if n % 2 == 1:  # Check if last digit is 1
-            count += 1
-        n = n // 2  # Remove last digit
-    return count
+**Two's complement** for negative numbers: invert all bits and add 1. This makes addition work uniformly for positive and negative numbers.
 
-# Example
-print(hammingWeight_bruteforce(11))  # Binary: 1011 → Output: 3
+### Essential Bit Operations
+
+| Operation | Symbol | Example | Result |
+|-----------|--------|---------|--------|
+| AND | `&` | `1010 & 1100` | `1000` |
+| OR | `\|` | `1010 \| 1100` | `1110` |
+| XOR | `^` | `1010 ^ 1100` | `0110` |
+| NOT | `~` | `~1010` | `0101` (plus sign flip) |
+| Left shift | `<<` | `0001 << 3` | `1000` (multiply by 2^3) |
+| Right shift | `>>` | `1000 >> 2` | `0010` (divide by 2^2) |
+
+### The Essential Bit Tricks Cheat Sheet
+
+Every one of these should be memorized:
+
+```python
+# 1. Check if nth bit is set
+(x >> n) & 1       # returns 1 if bit n is set, 0 otherwise
+
+# 2. Set nth bit
+x | (1 << n)       # force bit n to 1
+
+# 3. Clear nth bit
+x & ~(1 << n)      # force bit n to 0
+
+# 4. Toggle nth bit
+x ^ (1 << n)       # flip bit n
+
+# 5. Clear the lowest set bit
+x & (x - 1)        # turn off the rightmost 1-bit
+# Example: 1100 & 1011 = 1000
+
+# 6. Isolate the lowest set bit
+x & (-x)           # keep only the rightmost 1-bit
+# Example: 1100 & 0100 = 0100  (two's complement: -x = ~x + 1)
+
+# 7. Check if power of 2
+x > 0 and (x & (x - 1)) == 0
+
+# 8. Count set bits (Kernighan's algorithm)
+count = 0
+while x:
+    x &= x - 1     # clear lowest set bit
+    count += 1
+
+# 9. Check if all bits are set up to some position
+(x & (x + 1)) == 0  # True for 0, 1, 11, 111, 1111, ...
+
+# 10. Swap two values without temp
+a ^= b; b ^= a; a ^= b
 ```
 
-### Problem 3: Power of Two - Repeated Division
-```python
-def isPowerOfTwo_bruteforce(n):
-    """
-    Time: O(log n), Space: O(1)
-    Keep dividing by 2 until we can't
-    """
-    if n <= 0:
-        return False
-
-    while n > 1:
-        if n % 2 != 0:  # Not divisible by 2
-            return False
-        n = n // 2
-
-    return True
-
-# Examples
-print(isPowerOfTwo_bruteforce(16))  # Output: True
-print(isPowerOfTwo_bruteforce(18))  # Output: False
+### XOR Properties (Critical for Interview)
+```
+a ^ a = 0          # XOR with itself is 0
+a ^ 0 = a          # XOR with 0 is identity
+a ^ b = b ^ a      # commutative
+(a ^ b) ^ c = a ^ (b ^ c)  # associative
 ```
 
-## 6. Optimized Solutions with Bit Manipulation
+These properties mean: XOR of a collection cancels out duplicates. If every element appears twice except one, XOR of all elements gives that one element.
 
-### Problem 1: Single Number - XOR Trick
-```python
-def singleNumber(nums):
-    """
-    Time: O(n), Space: O(1)
+### Why `x & (x - 1)` Clears the Lowest Set Bit
 
-    XOR Properties:
-    - a ^ a = 0 (any number XOR itself is 0)
-    - a ^ 0 = a (any number XOR 0 is itself)
-    - XOR is commutative and associative
-
-    Example: [4, 1, 2, 1, 2]
-    Step by step:
-    0 ^ 4 = 4     (binary: 0000 ^ 0100 = 0100)
-    4 ^ 1 = 5     (binary: 0100 ^ 0001 = 0101)
-    5 ^ 2 = 7     (binary: 0101 ^ 0010 = 0111)
-    7 ^ 1 = 6     (binary: 0111 ^ 0001 = 0110)
-    6 ^ 2 = 4     (binary: 0110 ^ 0010 = 0100)
-
-    All pairs cancel out (1^1=0, 2^2=0), leaving only 4!
-    """
-    result = 0
-    for num in nums:
-        result ^= num  # XOR all numbers together
-    return result
-
-# Example
-nums = [4, 1, 2, 1, 2]
-print(singleNumber(nums))  # Output: 4
-
-# Visual breakdown:
-#   4: 0100
-#   1: 0001
-#   2: 0010
-#   1: 0001
-#   2: 0010
-# XOR: 0100 (which is 4)
+Consider `x = 1010100` (binary). Then `x - 1 = 1010011` — it flips the lowest 1-bit and all bits below it. AND-ing:
+```
+x     = 1010100
+x - 1 = 1010011
+x & (x-1) = 1010000  <- lowest set bit is cleared
 ```
 
-### Problem 2: Number of 1 Bits - Brian Kernighan's Algorithm
+This is the basis of Kernighan's bit counting algorithm: keep clearing the lowest bit and counting until the number is 0.
+
+### Why `x & (-x)` Isolates the Lowest Set Bit
+
+In two's complement, `-x = ~x + 1`. For `x = 1010100`:
+```
+x  = 1010100
+~x = 0101011
+-x = 0101100
+x & (-x) = 0000100  <- only the lowest set bit remains
+```
+
+### Complexity of Bit Operations
+All bitwise operations on fixed-width integers (32-bit or 64-bit) are O(1). Counting bits is O(number of set bits) with Kernighan's algorithm, or O(1) with lookup tables or built-in `popcount`.
+
+---
+
+## The Templates
+
+### Python — Bit Counting Template
 ```python
-def hammingWeight(n):
-    """
-    Time: O(k) where k = number of 1 bits, Space: O(1)
-
-    Key Insight: n & (n-1) removes the rightmost 1 bit
-
-    Example with n = 11 (binary: 1011):
-
-    Iteration 1:
-    n     = 1011 (11)
-    n-1   = 1010 (10)
-    n&(n-1) = 1010 (10)  → Removed rightmost 1
-
-    Iteration 2:
-    n     = 1010 (10)
-    n-1   = 1001 (9)
-    n&(n-1) = 1000 (8)   → Removed rightmost 1
-
-    Iteration 3:
-    n     = 1000 (8)
-    n-1   = 0111 (7)
-    n&(n-1) = 0000 (0)   → Removed rightmost 1
-
-    Count = 3 (three 1 bits)
-    """
+def count_bits(n: int) -> int:
+    """Count the number of 1-bits in n (Kernighan's algorithm)."""
     count = 0
     while n:
-        n &= (n - 1)  # Remove the rightmost 1 bit
+        n &= n - 1  # clear lowest set bit
         count += 1
     return count
-
-# Alternative method - checking each bit
-def hammingWeight_alternative(n):
-    """
-    Check each bit position using bit mask
-    """
-    count = 0
-    while n:
-        count += n & 1  # Check if rightmost bit is 1
-        n >>= 1         # Right shift to check next bit
-    return count
-
-# Example
-print(hammingWeight(11))  # Output: 3
-print(hammingWeight_alternative(11))  # Output: 3
 ```
 
-### Problem 3: Power of Two - Single Bit Check
+### Python — Subset Enumeration with Bitmask
 ```python
-def isPowerOfTwo(n):
-    """
-    Time: O(1), Space: O(1)
-
-    Key Insight: Power of 2 has exactly one 1 bit
-    - 1  = 0001 (2^0)
-    - 2  = 0010 (2^1)
-    - 4  = 0100 (2^2)
-    - 8  = 1000 (2^3)
-    - 16 = 10000 (2^4)
-
-    For power of 2:
-    n     = 1000 (8)
-    n-1   = 0111 (7)
-    n&(n-1) = 0000 (0)  → Result is 0!
-
-    For non-power of 2:
-    n     = 1010 (10)
-    n-1   = 1001 (9)
-    n&(n-1) = 1000 (8)  → Result is NOT 0
-
-    Also check n > 0 to handle negative numbers and zero
-    """
-    return n > 0 and (n & (n - 1)) == 0
-
-# Examples with binary visualization
-test_cases = [1, 2, 4, 8, 16, 3, 6, 10, 0, -4]
-for num in test_cases:
-    result = isPowerOfTwo(num)
-    binary = bin(num) if num > 0 else "N/A"
-    print(f"{num:3d} ({binary:>8s}): {result}")
-
-# Output:
-#   1 (   0b1): True
-#   2 (  0b10): True
-#   4 ( 0b100): True
-#   8 (0b1000): True
-#  16 (0b10000): True
-#   3 (  0b11): False
-#   6 ( 0b110): False
-#  10 (0b1010): False
-#   0 (    N/A): False
-#  -4 (    N/A): False
-```
-
-### Bonus Problem: Reverse Bits (LeetCode #190)
-```python
-def reverseBits(n):
-    """
-    Time: O(32) = O(1), Space: O(1)
-
-    Reverse the bits of a 32-bit unsigned integer
-
-    Example: n = 43261596 (binary: 00000010100101000001111010011100)
-    Reversed: 964176192 (binary: 00111001011110000010100101000000)
-
-    Strategy: Extract each bit from right, add to result from left
-    """
-    result = 0
-    for i in range(32):
-        # Extract the rightmost bit of n
-        bit = n & 1
-
-        # Add this bit to the leftmost position of result
-        result = (result << 1) | bit
-
-        # Move to next bit in n
-        n >>= 1
-
-    return result
-
-# Example with smaller number for visualization
-def reverseBits_visual(n, num_bits=8):
-    """8-bit example for clarity"""
-    print(f"Original: {n:3d} = {bin(n)[2:].zfill(num_bits)}")
-    result = 0
-    for i in range(num_bits):
-        bit = n & 1
-        result = (result << 1) | bit
-        n >>= 1
-        print(f"Step {i+1}: bit={bit}, result={bin(result)[2:].zfill(i+1)}")
-    print(f"Reversed: {result:3d} = {bin(result)[2:].zfill(num_bits)}")
-    return result
-
-# Example: reverse 8-bit number 29 (00011101)
-# Expected result: 184 (10111000)
-reverseBits_visual(29, 8)
-```
-
-## 7. Time & Space Complexity Analysis
-
-### Comparison Table
-
-| Problem | Brute Force Time | Brute Force Space | Optimized Time | Optimized Space | Improvement |
-|---------|------------------|-------------------|----------------|-----------------|-------------|
-| Single Number | O(n) | O(n) | O(n) | O(1) | Space: n → 1 |
-| Hamming Weight | O(log n) | O(1) | O(k)* | O(1) | Time: log n → k |
-| Power of Two | O(log n) | O(1) | O(1) | O(1) | Time: log n → 1 |
-| Reverse Bits | O(n) | O(1) | O(1) | O(1) | Time: n → 32 |
-
-*k = number of set bits (1s), k ≤ log n
-
-### Detailed Analysis
-
-#### Single Number
-- **Brute Force**: HashMap stores all unique numbers → O(n) space
-- **Optimized**: XOR operation accumulates in single variable → O(1) space
-- **Why Better**: No extra memory, same linear time, cache-friendly
-
-#### Hamming Weight
-- **Brute Force**: Checks every bit position (32 iterations for 32-bit int)
-- **Optimized**: Only iterates for each 1 bit (sparse numbers are faster)
-- **Example**: Number with 3 set bits → only 3 iterations instead of 32
-
-#### Power of Two
-- **Brute Force**: Repeatedly divides by 2 until reaching 1 or odd number
-- **Optimized**: Single bitwise AND operation
-- **Why Better**: O(1) constant time vs O(log n) divisions
-
-## 8. Bit Operations Cheat Sheet
-
-### Basic Bitwise Operators
-
-```python
-# AND (&) - Both bits must be 1
-#   1010 (10)
-# & 1100 (12)
-# ------
-#   1000 (8)
-print(10 & 12)  # Output: 8
-
-# OR (|) - At least one bit must be 1
-#   1010 (10)
-# | 1100 (12)
-# ------
-#   1110 (14)
-print(10 | 12)  # Output: 14
-
-# XOR (^) - Bits must be different
-#   1010 (10)
-# ^ 1100 (12)
-# ------
-#   0110 (6)
-print(10 ^ 12)  # Output: 6
-
-# NOT (~) - Flip all bits (includes sign bit)
-# ~1010 = ...11110101 (two's complement)
-print(~10)  # Output: -11
-
-# Left Shift (<<) - Multiply by 2^n
-#   0101 (5)
-# << 2
-# ------
-#   010100 (20)
-print(5 << 2)  # Output: 20 (5 * 2^2 = 5 * 4)
-
-# Right Shift (>>) - Divide by 2^n (integer division)
-#   1010 (10)
-# >> 2
-# ------
-#   0010 (2)
-print(10 >> 2)  # Output: 2 (10 // 2^2 = 10 // 4)
-```
-
-### Essential Bit Manipulation Tricks
-
-```python
-# 1. Check if bit at position i is set (1)
-def is_bit_set(num, i):
-    """Check if i-th bit from right is 1"""
-    return (num & (1 << i)) != 0
-
-# Example: Is 3rd bit of 10 (1010) set?
-print(is_bit_set(10, 3))  # True (1010 has 1 at position 3)
-print(is_bit_set(10, 2))  # False (1010 has 0 at position 2)
-
-
-# 2. Set bit at position i to 1
-def set_bit(num, i):
-    """Set i-th bit to 1"""
-    return num | (1 << i)
-
-# Example: Set 2nd bit of 10 (1010) → 1110 (14)
-print(set_bit(10, 2))  # Output: 14
-
-
-# 3. Clear bit at position i (set to 0)
-def clear_bit(num, i):
-    """Set i-th bit to 0"""
-    return num & ~(1 << i)
-
-# Example: Clear 3rd bit of 10 (1010) → 0010 (2)
-print(clear_bit(10, 3))  # Output: 2
-
-
-# 4. Toggle bit at position i
-def toggle_bit(num, i):
-    """Flip i-th bit"""
-    return num ^ (1 << i)
-
-# Example: Toggle 2nd bit of 10 (1010) → 1110 (14)
-print(toggle_bit(10, 2))  # Output: 14
-
-
-# 5. Get rightmost set bit
-def rightmost_set_bit(num):
-    """Get position of rightmost 1 bit"""
-    return num & -num
-
-# Example: 12 (1100) → rightmost set bit is at position 2 → 0100 (4)
-print(rightmost_set_bit(12))  # Output: 4
-
-
-# 6. Clear rightmost set bit
-def clear_rightmost_set_bit(num):
-    """Remove rightmost 1"""
-    return num & (num - 1)
-
-# Example: 12 (1100) → 8 (1000)
-print(clear_rightmost_set_bit(12))  # Output: 8
-
-
-# 7. Check if even or odd
-def is_even(num):
-    """Check if number is even using bit check"""
-    return (num & 1) == 0
-
-print(is_even(10))  # True
-print(is_even(11))  # False
-
-
-# 8. Multiply by power of 2
-def multiply_by_power_of_2(num, power):
-    """Multiply num by 2^power"""
-    return num << power
-
-print(multiply_by_power_of_2(5, 3))  # 5 * 8 = 40
-
-
-# 9. Divide by power of 2
-def divide_by_power_of_2(num, power):
-    """Divide num by 2^power"""
-    return num >> power
-
-print(divide_by_power_of_2(40, 3))  # 40 // 8 = 5
-
-
-# 10. Swap two numbers without temp variable
-def swap(a, b):
-    """Swap using XOR"""
-    print(f"Before: a={a}, b={b}")
-    a = a ^ b  # a now contains XOR of both
-    b = a ^ b  # b = (a^b)^b = a
-    a = a ^ b  # a = (a^b)^a = b
-    print(f"After: a={a}, b={b}")
-    return a, b
-
-swap(5, 10)
-
-
-# 11. Get all subsets using bits
-def get_all_subsets(nums):
-    """
-    Generate all subsets using bit manipulation
-    For n elements, there are 2^n subsets
-    Each bit pattern represents a subset
-    """
+def enumerate_subsets(nums: list) -> list:
+    """Generate all subsets using bitmask."""
     n = len(nums)
     subsets = []
-
-    # Iterate through all possible bit patterns
-    for i in range(1 << n):  # 2^n combinations
+    for mask in range(1 << n):  # 0 to 2^n - 1
         subset = []
-        for j in range(n):
-            # Check if j-th bit is set
-            if i & (1 << j):
-                subset.append(nums[j])
+        for i in range(n):
+            if mask & (1 << i):
+                subset.append(nums[i])
         subsets.append(subset)
-
     return subsets
+```
 
-# Example: [1, 2, 3]
-# 000 → []
-# 001 → [1]
-# 010 → [2]
-# 011 → [1, 2]
-# 100 → [3]
-# 101 → [1, 3]
-# 110 → [2, 3]
-# 111 → [1, 2, 3]
-print(get_all_subsets([1, 2, 3]))
+### Python — Bitmask DP Template
+```python
+def bitmask_dp(n: int, cost: list) -> int:
+    """Template for bitmask DP. dp[mask] = optimal value for the subset represented by mask."""
+    dp = [float('inf')] * (1 << n)
+    dp[0] = 0  # empty set base case
 
+    for mask in range(1 << n):
+        if dp[mask] == float('inf'):
+            continue
+        # Try adding each element not yet in the set
+        for i in range(n):
+            if mask & (1 << i):
+                continue  # element i already in set
+            new_mask = mask | (1 << i)
+            dp[new_mask] = min(dp[new_mask], dp[mask] + cost[i])
 
-# 12. Count bits needed to convert A to B
-def bits_to_flip(a, b):
-    """
-    Count how many bits differ between two numbers
-    Strategy: XOR gives different bits, then count 1s
-    """
-    xor = a ^ b
-    count = 0
-    while xor:
-        count += xor & 1
-        xor >>= 1
+    return dp[(1 << n) - 1]  # all elements included
+```
+
+### Python — Add Without Arithmetic Operators
+```python
+def add(a: int, b: int) -> int:
+    """Add two numbers using only bit operations."""
+    # In Python, handle 32-bit overflow manually
+    MASK = 0xFFFFFFFF
+    MAX_INT = 0x7FFFFFFF
+    while b & MASK:
+        carry = (a & b) << 1
+        a = a ^ b
+        b = carry
+    # If b is 0, a is the answer
+    # Handle negative numbers in Python's arbitrary precision
+    return a & MASK if a > MAX_INT else a
+```
+
+### Go — Bit Manipulation Templates
+```go
+func countBits(n int) int {
+    count := 0
+    for n > 0 {
+        n &= n - 1
+        count++
+    }
     return count
-
-# Example: 29 (11101) vs 15 (01111)
-# XOR:     10010 → 2 bits different
-print(bits_to_flip(29, 15))  # Output: 2
-
-
-# 13. Check if number is power of 4
-def is_power_of_4(n):
-    """
-    Power of 4 conditions:
-    1. Must be power of 2: n & (n-1) == 0
-    2. The single 1 bit must be at even position (0, 2, 4, 6...)
-    3. Use mask 0x55555555 = 01010101... (1s at even positions)
-    """
-    return n > 0 and (n & (n - 1)) == 0 and (n & 0x55555555) != 0
-
-# Examples:
-# 4  = 0100 (bit at position 2) → True
-# 8  = 1000 (bit at position 3) → False
-# 16 = 10000 (bit at position 4) → True
-print(is_power_of_4(4))   # True
-print(is_power_of_4(8))   # False
-print(is_power_of_4(16))  # True
-
-
-# 14. Get absolute value without branching
-def absolute(n):
-    """
-    Get absolute value using bit manipulation
-    Works by creating mask from sign bit
-    """
-    mask = n >> 31  # All 1s if negative, all 0s if positive
-    return (n + mask) ^ mask
-
-print(absolute(-10))  # Output: 10
-print(absolute(10))   # Output: 10
-
-
-# 15. Find missing number in sequence 0 to n
-def missingNumber(nums):
-    """
-    XOR all numbers 0 to n with array elements
-    All pairs cancel out, leaving missing number
-    """
-    missing = len(nums)
-    for i, num in enumerate(nums):
-        missing ^= i ^ num
-    return missing
-
-# Example: [0, 1, 3] → missing 2
-print(missingNumber([0, 1, 3]))  # Output: 2
-```
-
-### Bitmask Patterns for Sets
-
-```python
-# Using integers as sets (for small ranges, e.g., lowercase letters)
-
-class BitSet:
-    """Set operations using bit manipulation"""
-
-    def __init__(self):
-        self.bits = 0
-
-    def add(self, x):
-        """Add element x to set"""
-        self.bits |= (1 << x)
-
-    def remove(self, x):
-        """Remove element x from set"""
-        self.bits &= ~(1 << x)
-
-    def contains(self, x):
-        """Check if x is in set"""
-        return (self.bits & (1 << x)) != 0
-
-    def union(self, other):
-        """Union of two sets"""
-        result = BitSet()
-        result.bits = self.bits | other.bits
-        return result
-
-    def intersection(self, other):
-        """Intersection of two sets"""
-        result = BitSet()
-        result.bits = self.bits & other.bits
-        return result
-
-    def difference(self, other):
-        """Elements in this set but not in other"""
-        result = BitSet()
-        result.bits = self.bits & ~other.bits
-        return result
-
-    def size(self):
-        """Count elements in set"""
-        count = 0
-        bits = self.bits
-        while bits:
-            count += bits & 1
-            bits >>= 1
-        return count
-
-    def to_list(self):
-        """Convert to list of elements"""
-        elements = []
-        for i in range(32):
-            if self.bits & (1 << i):
-                elements.append(i)
-        return elements
-
-# Example usage
-s1 = BitSet()
-s1.add(1)
-s1.add(3)
-s1.add(5)
-print(s1.to_list())  # [1, 3, 5]
-
-s2 = BitSet()
-s2.add(3)
-s2.add(5)
-s2.add(7)
-
-s3 = s1.union(s2)
-print(s3.to_list())  # [1, 3, 5, 7]
-
-s4 = s1.intersection(s2)
-print(s4.to_list())  # [3, 5]
-```
-
-## 9. Pro Tips for Senior Engineers
-
-### When to Use Bit Manipulation
-
-✅ **Good Use Cases:**
-1. **Performance-critical code** - Game engines, embedded systems
-2. **Space-constrained environments** - Mobile apps, IoT devices
-3. **Algorithmic competitions** - LeetCode, Codeforces
-4. **Low-level system programming** - Device drivers, kernel code
-5. **Cryptography** - Hashing, encoding operations
-6. **Network programming** - IP address manipulation, protocol flags
-7. **Compression algorithms** - Huffman coding, run-length encoding
-
-❌ **When to Avoid:**
-1. **Business logic** - Readability matters more than microseconds
-2. **Maintainability concerns** - Team unfamiliar with bit tricks
-3. **No performance bottleneck** - Premature optimization is evil
-4. **Complex operations** - When high-level abstractions are clearer
-
-### Readability Considerations
-
-```python
-# ❌ BAD: Cryptic one-liner
-def mystery(n):
-    return n & -n
-
-# ✅ GOOD: Documented and clear
-def get_rightmost_set_bit(num):
-    """
-    Returns a number with only the rightmost set bit of num.
-
-    Example: 12 (1100) → 4 (0100)
-
-    How it works:
-    - -num in two's complement flips all bits and adds 1
-    - ANDing with original preserves only rightmost 1 bit
-    """
-    return num & -num
-
-# ✅ BETTER: Provide alternative for clarity
-def get_rightmost_set_bit_verbose(num):
-    """Alternative implementation for understanding"""
-    if num == 0:
-        return 0
-
-    position = 0
-    while (num & 1) == 0:
-        num >>= 1
-        position += 1
-
-    return 1 << position
-```
-
-### Performance Notes
-
-1. **Bit operations are fast but not magic**
-   - Modern compilers optimize regular operations too
-   - CPU cache misses matter more than bit tricks
-   - Profile before optimizing!
-
-2. **Integer size matters**
-   - Python integers are arbitrary precision (slower than C)
-   - For performance, consider using `numpy` or `ctypes`
-   - JavaScript only has 53-bit safe integers
-
-3. **Use bit manipulation for:**
-   - Flags and permissions (32+ booleans in one int)
-   - Fast modulo by power of 2: `n % 8 == n & 7`
-   - Quick multiply/divide by power of 2
-   - Set operations on small domains
-
-### Code Review Red Flags
-
-```python
-# 🚩 RED FLAG: No comments on complex bit operations
-def weird_func(x):
-    return x & (x - 1)
-
-# ✅ BETTER: Explain the trick
-def is_power_of_two_or_zero(x):
-    """
-    Returns True if x is 0 or a power of 2.
-    Uses the property that x & (x-1) clears the rightmost set bit.
-    Powers of 2 have only one bit set, so result is 0.
-    """
-    return x & (x - 1) == 0
-
-
-# 🚩 RED FLAG: Bit manipulation when there's a clearer way
-def is_odd_bitwise(n):
-    return n & 1
-
-# ✅ BETTER: Use clear idiom for simple operations
-def is_odd(n):
-    return n % 2 == 1  # Everyone understands this
-
-
-# 🚩 RED FLAG: Platform-dependent bit operations
-def some_func(x):
-    return x >> 32  # Assumes 64-bit integers
-
-# ✅ BETTER: Document assumptions
-def extract_upper_32_bits(x):
-    """
-    Extracts upper 32 bits of a 64-bit integer.
-    Requires: Python 3 (arbitrary precision) or 64-bit system.
-    """
-    return (x >> 32) & 0xFFFFFFFF
-```
-
-## 10. Problem Recognition
-
-### Instant Recognition Keywords
-
-When you see these phrases in a problem, think bit manipulation:
-
-1. **"All elements appear twice except one"** → XOR pattern
-2. **"Power of two"** → Single bit check: `n & (n-1) == 0`
-3. **"Count the number of 1 bits"** → Brian Kernighan's algorithm
-4. **"Missing number in sequence"** → XOR all numbers
-5. **"Subsets"** → Bit masking for all combinations
-6. **"O(1) space"** + "linear time" → Likely needs bit tricks
-7. **"Without using extra space"** → XOR or bit flags
-8. **"Swap without temp variable"** → XOR swap
-9. **"Check if bit is set"** → Bit masking
-10. **"Count differences between numbers"** → XOR + count bits
-
-### Pattern Matching
-
-| Problem Pattern | Bit Technique | Time | Space |
-|----------------|---------------|------|-------|
-| Find unique in duplicates | XOR all elements | O(n) | O(1) |
-| Count set bits | Brian Kernighan | O(k) | O(1) |
-| Power of 2/4 check | `n & (n-1)` | O(1) | O(1) |
-| Missing number | XOR with indices | O(n) | O(1) |
-| All subsets | Iterate 2^n masks | O(n·2^n) | O(1) |
-| Even/odd check | Check LSB: `n & 1` | O(1) | O(1) |
-| Multiply by 2^k | Left shift: `n << k` | O(1) | O(1) |
-| Divide by 2^k | Right shift: `n >> k` | O(1) | O(1) |
-| Reverse bits | Shift and build | O(32) | O(1) |
-| Bit difference count | XOR + count bits | O(k) | O(1) |
-
-## 11. Practice Problems
-
-### Beginner Level
-1. **Reverse Bits** (LeetCode #190)
-   - Reverse bits of a 32-bit unsigned integer
-   - Good for: Understanding bit shifting and building
-
-2. **Missing Number** (LeetCode #268)
-   - Find missing number in array containing 0 to n
-   - Good for: XOR properties
-
-3. **Power of Four** (LeetCode #342)
-   - Check if number is power of four
-   - Good for: Combining bit tricks
-
-### Intermediate Level
-4. **Single Number II** (LeetCode #137)
-   - Every element appears 3 times except one
-   - Good for: Advanced bit counting
-
-5. **Sum of Two Integers** (LeetCode #371)
-   - Add two integers without using + or - operators
-   - Good for: Understanding carry with XOR and AND
-
-6. **Bitwise AND of Numbers Range** (LeetCode #201)
-   - Find bitwise AND of all numbers in range [left, right]
-   - Good for: Bit pattern recognition
-
-7. **Counting Bits** (LeetCode #338)
-   - Count set bits for all numbers 0 to n
-   - Good for: Dynamic programming + bits
-
-### Advanced Level
-8. **Maximum XOR of Two Numbers** (LeetCode #421)
-   - Find maximum XOR of two numbers in array
-   - Good for: Trie + bit manipulation
-
-9. **Single Number III** (LeetCode #260)
-   - Two elements appear once, others appear twice
-   - Good for: Complex XOR partitioning
-
-10. **Minimum Flips to Make a OR b Equal c** (LeetCode #1318)
-    - Bit manipulation with conditions
-    - Good for: Practical bit operations
-
-### Expert Level
-11. **Gray Code** (LeetCode #89)
-    - Generate n-bit Gray code sequence
-    - Good for: Bit sequence patterns
-
-12. **UTF-8 Validation** (LeetCode #393)
-    - Validate UTF-8 encoding using bit patterns
-    - Good for: Real-world bit manipulation
-
-## 12. Common Mistakes
-
-### Mistake 1: Forgetting Negative Numbers
-```python
-# ❌ WRONG: Doesn't handle negatives
-def count_bits_wrong(n):
-    count = 0
-    while n > 0:  # Infinite loop if n is negative!
-        count += n & 1
-        n >>= 1
-    return count
-
-# ✅ CORRECT: Handle negatives or specify unsigned
-def count_bits(n):
-    """Count set bits in 32-bit unsigned integer"""
-    if n < 0:
-        # In Python, convert to 32-bit unsigned
-        n = n & 0xFFFFFFFF
-
-    count = 0
-    while n:
-        count += n & 1
-        n >>= 1
-    return count
-```
-
-### Mistake 2: Operator Precedence
-```python
-# ❌ WRONG: Precedence issue
-if n & 1 == 0:  # Parsed as: n & (1 == 0) → n & False → 0
-    print("Even")
-
-# ✅ CORRECT: Use parentheses
-if (n & 1) == 0:
-    print("Even")
-
-# Common precedence errors:
-# Comparison operators (==, <, >) have HIGHER precedence than bitwise (&, |, ^)
-# Always use parentheses with bit operations in conditions!
-```
-
-### Mistake 3: Integer Overflow (Language-Dependent)
-```python
-# Python: No overflow (arbitrary precision)
-x = 1 << 100  # Works fine in Python
-
-# JavaScript: Only 53-bit safe integers
-# C/C++/Java: Fixed-width integers overflow
-
-# ✅ GOOD: Document integer size assumptions
-def safe_left_shift(n, shift):
-    """
-    Left shift with overflow check for 32-bit integers.
-    Returns None if result would overflow.
-    """
-    if shift >= 32 or n >= (1 << (32 - shift)):
-        return None  # Would overflow
-    return n << shift
-```
-
-### Mistake 4: Not Considering All Bits
-```python
-# ❌ WRONG: Only checks lower bits
-def is_power_of_two_wrong(n):
-    return (n & (n - 1)) == 0  # True for 0 too!
-
-# ✅ CORRECT: Check positive first
-def is_power_of_two(n):
-    return n > 0 and (n & (n - 1)) == 0
-```
-
-### Mistake 5: Overcomplicating Simple Operations
-```python
-# ❌ WRONG: Bit manipulation for the sake of it
-def is_even_complicated(n):
-    return ~n & 1  # Confusing!
-
-# ✅ CORRECT: Use clear idioms
-def is_even(n):
-    return n % 2 == 0  # Everyone understands this
-
-# Use bit manipulation when there's a REAL benefit:
-# - Performance critical code
-# - Space optimization needed
-# - Algorithm inherently requires bits (XOR for unique element)
-```
-
-### Mistake 6: Not Testing Edge Cases
-```python
-# Common edge cases to test:
-test_cases = [
-    0,           # Zero
-    1,           # Smallest positive
-    -1,          # All bits set (two's complement: 11111111...)
-    2**31 - 1,   # Max 32-bit signed int
-    -2**31,      # Min 32-bit signed int
-    2**32 - 1,   # Max 32-bit unsigned int
-]
-
-def test_function(func):
-    for test in test_cases:
-        try:
-            result = func(test)
-            print(f"{func.__name__}({test}) = {result}")
-        except Exception as e:
-            print(f"{func.__name__}({test}) raised {e}")
-```
-
-### Mistake 7: Mixing Signed and Unsigned
-```python
-# ❌ WRONG: Confusion about sign
-def reverse_bits_wrong(n):
-    # Python right shift (>>) is arithmetic for negatives
-    # May not work as expected
-    result = 0
-    for _ in range(32):
-        result <<= 1
-        result |= n & 1
-        n >>= 1  # Problem if n is negative!
+}
+
+func isPowerOfTwo(n int) bool {
+    return n > 0 && n&(n-1) == 0
+}
+
+// Add two numbers without + operator
+func getSum(a, b int) int {
+    for b != 0 {
+        carry := (a & b) << 1
+        a = a ^ b
+        b = carry
+    }
+    return a
+}
+
+// Enumerate subsets of nums
+func subsets(nums []int) [][]int {
+    n := len(nums)
+    var result [][]int
+    for mask := 0; mask < (1 << n); mask++ {
+        var subset []int
+        for i := 0; i < n; i++ {
+            if mask&(1<<i) != 0 {
+                subset = append(subset, nums[i])
+            }
+        }
+        result = append(result, subset)
+    }
     return result
-
-# ✅ CORRECT: Ensure unsigned behavior
-def reverse_bits(n):
-    # Mask to ensure 32-bit unsigned
-    n = n & 0xFFFFFFFF
-    result = 0
-    for _ in range(32):
-        result <<= 1
-        result |= n & 1
-        n >>= 1
-    return result
-```
-
-### Mistake 8: Not Documenting Bit Tricks
-```python
-# ❌ WRONG: No explanation
-def solve(n):
-    return (n & -n).bit_length() - 1
-
-# ✅ CORRECT: Explain the magic
-def get_rightmost_set_bit_position(n):
-    """
-    Returns the 0-indexed position of the rightmost set bit.
-
-    Example: 12 (binary: 1100)
-    - n & -n = 4 (binary: 0100) isolates rightmost bit
-    - bit_length() = 3 (needs 3 bits to represent 4)
-    - Subtract 1 to get 0-indexed position = 2
-
-    Args:
-        n: Positive integer
-
-    Returns:
-        Position of rightmost 1 bit (0-indexed from right)
-    """
-    if n == 0:
-        return -1  # No set bits
-    return (n & -n).bit_length() - 1
-
-# Example: 12 (1100) has rightmost bit at position 2
-print(get_rightmost_set_bit_position(12))  # Output: 2
+}
 ```
 
 ---
 
-## Summary
+## Variant Subpatterns
 
-Bit manipulation is a powerful technique for writing efficient, space-optimized algorithms. The key is recognizing when to use it:
+### 1. XOR Tricks (Finding Unique Elements)
+- **Single unique**: XOR all elements. Duplicates cancel out.
+- **Two unique (LC 260)**: XOR all to get `a ^ b`. Find a set bit (use `x & (-x)`). Split elements by that bit into two groups. XOR each group separately.
+- **Three unique same frequency**: Requires bit counting per position.
 
-1. **XOR** for finding unique elements and canceling pairs
-2. **AND** with powers of 2 for checking specific bits
-3. **n & (n-1)** for removing rightmost 1 bit
-4. **Shifts** for fast multiplication/division by powers of 2
-5. **Bitmasks** for compact set operations
+### 2. Bit Counting and Manipulation
+- Count set bits (Kernighan's).
+- Reverse bits (swap halves, then quarters, etc.).
+- Find the highest/lowest set bit.
 
-Remember: **Clarity beats cleverness.** Use bit manipulation when it provides clear benefits, but always prioritize readable, maintainable code. Document your bit tricks thoroughly!
+### 3. Bitmask DP
+Represent the "set of items chosen" as a bitmask. The state space is 2^n, so this works for n <= 20-23.
+- Traveling Salesman Problem (TSP).
+- Partition into equal-sum subsets.
+- Find Shortest Superstring.
+- Assignment problems (who does what task).
 
-### Quick Reference Card
+### 4. Arithmetic with Bits
+- Addition: XOR for sum without carry, AND shifted left for carry.
+- Subtraction: a - b = a + (~b + 1).
+- Multiplication: shift-and-add.
 
-| Operation | Code | Use Case |
-|-----------|------|----------|
-| Check bit | `n & (1 << i)` | Test if i-th bit is set |
-| Set bit | `n \| (1 << i)` | Set i-th bit to 1 |
-| Clear bit | `n & ~(1 << i)` | Set i-th bit to 0 |
-| Toggle bit | `n ^ (1 << i)` | Flip i-th bit |
-| Check power of 2 | `n > 0 and n & (n-1) == 0` | Single bit set |
-| Get rightmost 1 | `n & -n` | Isolate lowest bit |
-| Clear rightmost 1 | `n & (n-1)` | Remove lowest bit |
-| Check even/odd | `n & 1` | LSB tells parity |
-| Multiply by 2^k | `n << k` | Fast multiplication |
-| Divide by 2^k | `n >> k` | Fast division |
+### 5. Bit-Level System Design Concepts
+- **Bloom Filters**: Probabilistic set membership using bit arrays and hash functions.
+- **Feature Flags**: Use individual bits in an integer to represent on/off features.
+- **Bitmask Permissions**: Unix file permissions (rwxrwxrwx = 9 bits).
+- **Compact Set Representation**: When the universe is small, use bits instead of hash sets.
 
-Happy bit hacking! 🚀
+---
+
+## Problem Walkthroughs
+
+---
+
+### Problem: Single Number (LC #136) — Easy
+**Companies**: Amazon, Microsoft, Google, Apple.
+
+**Problem**: Given a non-empty array where every element appears twice except one, find the single element that appears once.
+
+**Brute Force**: Use a hash set — add if not present, remove if present.
+```python
+def single_number_brute(nums: list) -> int:
+    seen = set()
+    for n in nums:
+        if n in seen:
+            seen.remove(n)
+        else:
+            seen.add(n)
+    return seen.pop()
+```
+Time: O(n), Space: O(n).
+
+**Key Insight**: XOR of all elements cancels out the pairs. `a ^ a = 0` and `0 ^ b = b`. So XOR of the entire array gives the unique element.
+
+**Optimal Solution**:
+```python
+def single_number(nums: list) -> int:
+    result = 0
+    for n in nums:
+        result ^= n
+    return result
+```
+Time: O(n), Space: O(1).
+
+One-liner: `return reduce(lambda a, b: a ^ b, nums)` or `return reduce(operator.xor, nums)`.
+
+**Dry Run** with `[4, 1, 2, 1, 2]`:
+```
+result = 0
+0 ^ 4 = 4
+4 ^ 1 = 5  (binary: 100 ^ 001 = 101)
+5 ^ 2 = 7  (101 ^ 010 = 111)
+7 ^ 1 = 6  (111 ^ 001 = 110)
+6 ^ 2 = 4  (110 ^ 010 = 100)
+Result: 4
+```
+
+**Edge Cases**: Array of size 1, negative numbers (XOR works on two's complement), all same elements except one.
+
+**Follow-up Questions**:
+- What if every element appears THREE times except one? (Count bits at each position mod 3.)
+- What if TWO elements appear once? (LC 260 — XOR all, split by a differing bit.)
+- Can you solve it without XOR? (Math: `2 * sum(set) - sum(nums)`.)
+
+---
+
+### Problem: Number of 1 Bits (LC #191) — Easy
+**Companies**: Amazon, Microsoft, Apple.
+
+**Problem**: Write a function that takes an unsigned integer and returns the number of '1' bits (Hamming weight).
+
+**Brute Force**: Check each of the 32 bits.
+```python
+def hamming_weight_brute(n: int) -> int:
+    count = 0
+    for i in range(32):
+        if n & (1 << i):
+            count += 1
+    return count
+```
+Time: O(32) = O(1), Space: O(1). Always checks all 32 bits even if most are 0.
+
+**Key Insight**: Use Kernighan's algorithm — `n & (n - 1)` clears the lowest set bit. Loop until n is 0, counting iterations. Only loops as many times as there are set bits.
+
+**Optimal Solution**:
+```python
+def hamming_weight(n: int) -> int:
+    count = 0
+    while n:
+        n &= n - 1  # clear lowest set bit
+        count += 1
+    return count
+```
+Time: O(k) where k = number of set bits. Space: O(1).
+
+**Dry Run** with `n = 11 (binary: 1011)`:
+```
+n = 1011, count = 0
+n & (n-1) = 1011 & 1010 = 1010, count = 1  (cleared bit 0)
+n & (n-1) = 1010 & 1001 = 1000, count = 2  (cleared bit 1)
+n & (n-1) = 1000 & 0111 = 0000, count = 3  (cleared bit 3)
+n = 0, stop. Answer: 3
+```
+
+**Edge Cases**: n = 0 (return 0), n = all 1s (return 32), n = power of 2 (return 1).
+
+**Follow-up Questions**:
+- If this function is called many times, how to optimize? (Use a lookup table for each byte. Precompute popcount for 0-255.)
+- What is the Hamming distance between two numbers? (popcount of a XOR b.)
+
+---
+
+### Problem: Counting Bits (LC #338) — Easy
+**Companies**: Amazon, Google, Microsoft.
+
+**Problem**: Given an integer n, return an array where `ans[i]` is the number of 1 bits in i, for 0 <= i <= n.
+
+**Brute Force**: For each number, count bits individually.
+```python
+def count_bits_brute(n: int) -> list:
+    result = []
+    for i in range(n + 1):
+        count = 0
+        x = i
+        while x:
+            x &= x - 1
+            count += 1
+        result.append(count)
+    return result
+```
+Time: O(n * 32) worst case. Space: O(n) for output.
+
+**Key Insight**: Use the DP relation `bits[i] = bits[i & (i-1)] + 1`. Since `i & (i-1)` clears the lowest set bit of i, the result has one fewer 1-bit, and we already computed its popcount.
+
+Alternative DP: `bits[i] = bits[i >> 1] + (i & 1)`. The number i has the same bits as i/2, plus potentially one more if the last bit is 1.
+
+**Optimal Solution**:
+```python
+def count_bits(n: int) -> list:
+    dp = [0] * (n + 1)
+    for i in range(1, n + 1):
+        dp[i] = dp[i & (i - 1)] + 1  # clear lowest bit, add 1
+    return dp
+```
+Time: O(n), Space: O(n) for the output.
+
+**Alternative DP approach**:
+```python
+def count_bits_alt(n: int) -> list:
+    dp = [0] * (n + 1)
+    for i in range(1, n + 1):
+        dp[i] = dp[i >> 1] + (i & 1)
+    return dp
+```
+
+**Dry Run** for n=5:
+```
+dp = [0, 0, 0, 0, 0, 0]
+i=1: dp[1] = dp[1 & 0] + 1 = dp[0] + 1 = 1
+i=2: dp[2] = dp[2 & 1] + 1 = dp[0] + 1 = 1
+i=3: dp[3] = dp[3 & 2] + 1 = dp[2] + 1 = 2
+i=4: dp[4] = dp[4 & 3] + 1 = dp[0] + 1 = 1
+i=5: dp[5] = dp[5 & 4] + 1 = dp[4] + 1 = 2
+Result: [0, 1, 1, 2, 1, 2]
+```
+
+**Edge Cases**: n = 0 (return [0]).
+
+**Follow-up Questions**:
+- Can you do it in O(n) time without using any built-in function? (Yes, as shown.)
+- How does this relate to the mathematical concept of binary entropy?
+
+---
+
+### Problem: Reverse Bits (LC #190) — Easy
+**Companies**: Amazon, Apple, Microsoft.
+
+**Problem**: Reverse bits of a given 32-bit unsigned integer.
+
+**Brute Force**: Convert to binary string, reverse, convert back.
+```python
+def reverse_bits_brute(n: int) -> int:
+    binary = bin(n)[2:].zfill(32)
+    return int(binary[::-1], 2)
+```
+
+**Key Insight**: Extract bits from right to left, build the result from left to right. For each of 32 bits, check the lowest bit of n, shift it into the correct position in the result.
+
+**Optimal Solution**:
+```python
+def reverse_bits(n: int) -> int:
+    result = 0
+    for i in range(32):
+        result = (result << 1) | (n & 1)  # shift result left, add lowest bit of n
+        n >>= 1                            # shift n right
+    return result
+```
+Time: O(32) = O(1), Space: O(1).
+
+**Divide and Conquer approach** (bit-parallel, O(log 32) = O(1)):
+```python
+def reverse_bits_dc(n: int) -> int:
+    n = ((n & 0xFFFF0000) >> 16) | ((n & 0x0000FFFF) << 16)  # swap 16-bit halves
+    n = ((n & 0xFF00FF00) >> 8)  | ((n & 0x00FF00FF) << 8)   # swap 8-bit halves
+    n = ((n & 0xF0F0F0F0) >> 4)  | ((n & 0x0F0F0F0F) << 4)  # swap 4-bit halves
+    n = ((n & 0xCCCCCCCC) >> 2)  | ((n & 0x33333333) << 2)   # swap 2-bit halves
+    n = ((n & 0xAAAAAAAA) >> 1)  | ((n & 0x55555555) << 1)   # swap individual bits
+    return n
+```
+This is how hardware and optimized libraries actually reverse bits.
+
+**Dry Run** with `n = 43261596`:
+```
+n in binary: 00000010 10010100 00011110 10011100
+
+Bit-by-bit reversal:
+Position 0 (rightmost): bit = 0, goes to position 31
+Position 1: bit = 0, goes to position 30
+...
+After full reversal:
+00111001 01111000 00101001 01000000 = 964176192
+```
+
+**Edge Cases**: n = 0 (return 0), n = all 1s (return all 1s), n = 1 (return 2^31).
+
+**Follow-up Questions**:
+- If called many times, how to optimize? (Cache results for each byte. Reverse each of the 4 bytes using a 256-entry lookup table, then reassemble in reverse order.)
+- How does the divide-and-conquer approach work? (Swap halves at decreasing granularity.)
+
+---
+
+### Problem: Sum of Two Integers (LC #371) — Medium
+**Companies**: Meta, Amazon, Google.
+
+**Problem**: Calculate the sum of two integers without using + or -.
+
+**Key Insight**: XOR gives the sum without carry. AND gives the carry bits. Shift carry left by 1 (carry propagates to the next position). Repeat until there is no carry.
+
+```
+  a = 5  (101)
+  b = 3  (011)
+
+  Step 1: sum_no_carry = 101 ^ 011 = 110 (6)
+          carry = (101 & 011) << 1 = (001) << 1 = 010 (2)
+
+  Step 2: a = 110, b = 010
+          sum_no_carry = 110 ^ 010 = 100 (4)
+          carry = (110 & 010) << 1 = (010) << 1 = 100 (4)
+
+  Step 3: a = 100, b = 100
+          sum_no_carry = 100 ^ 100 = 000 (0)
+          carry = (100 & 100) << 1 = (100) << 1 = 1000 (8)
+
+  Step 4: a = 000, b = 1000
+          sum_no_carry = 000 ^ 1000 = 1000 (8)
+          carry = (000 & 1000) << 1 = 0
+
+  b = 0, done. Answer: 8 = 5 + 3 ✓
+```
+
+**Optimal Solution**:
+```python
+def get_sum(a: int, b: int) -> int:
+    # Python integers have arbitrary precision, so we need to mask to 32 bits
+    MASK = 0xFFFFFFFF      # 32-bit mask
+    MAX_INT = 0x7FFFFFFF   # max positive 32-bit int
+
+    while b & MASK:
+        carry = (a & b) << 1
+        a = a ^ b
+        b = carry
+
+    # If a fits in 32 bits, return it
+    # If it overflows (negative in 32-bit), convert from unsigned to signed
+    a = a & MASK
+    return a if a <= MAX_INT else ~(a ^ MASK)
+```
+
+**Why the Python version is tricky**: Python integers are arbitrary precision — they do not overflow. In languages like Java/C++, the natural 32-bit overflow handles negative numbers automatically. In Python, we need to manually mask to 32 bits and convert back to signed representation.
+
+**Go version** (cleaner due to fixed-width integers):
+```go
+func getSum(a, b int) int {
+    for b != 0 {
+        carry := (a & b) << 1
+        a = a ^ b
+        b = carry
+    }
+    return a
+}
+```
+
+**Dry Run** with `a=1, b=2`:
+```
+a=001, b=010:
+  carry = (001 & 010) << 1 = 0
+  a = 001 ^ 010 = 011 (3)
+  b = 0 -> stop
+Answer: 3
+```
+
+**Edge Cases**: One or both operands are 0, negative numbers, adding -1 + 1.
+
+**Follow-up Questions**:
+- How would you implement subtraction? (`a - b = a + (~b + 1)`, but you need getSum for the +1.)
+- How would you implement multiplication? (Shift-and-add.)
+- Why does this always terminate? (Each iteration, the carry has strictly fewer bits — the lowest set bit moves left.)
+
+---
+
+### Problem: Maximum XOR of Two Numbers in an Array (LC #421) — Medium (labeled Hard-adjacent)
+**Companies**: Google, Amazon, Microsoft.
+
+**Problem**: Given an integer array, find the maximum XOR of any two elements.
+
+**Brute Force**: Check all pairs.
+```python
+def find_max_xor_brute(nums: list) -> int:
+    max_xor = 0
+    for i in range(len(nums)):
+        for j in range(i + 1, len(nums)):
+            max_xor = max(max_xor, nums[i] ^ nums[j])
+    return max_xor
+```
+Time: O(n^2), Space: O(1).
+
+**Key Insight — Greedy Bit-by-Bit using Hash Set**:
+Build the answer bit by bit, from the most significant bit down. At each bit position, we check if it is possible to set this bit to 1 in the XOR result. We use the property: if `a ^ b = target`, then `a ^ target = b`. So we check if any pair of prefixes can produce the desired target.
+
+**Optimal Solution — Hash Set**:
+```python
+def find_max_xor(nums: list) -> int:
+    max_xor = 0
+    mask = 0
+
+    for i in range(31, -1, -1):  # from bit 31 down to bit 0
+        mask |= (1 << i)  # consider bits from MSB down to bit i
+
+        # Collect all prefixes up to bit i
+        prefixes = set()
+        for n in nums:
+            prefixes.add(n & mask)
+
+        # Greedily try to set bit i in the answer
+        candidate = max_xor | (1 << i)
+
+        # Check if any two prefixes produce this candidate
+        for prefix in prefixes:
+            # If prefix ^ candidate is also a prefix, then candidate is achievable
+            if prefix ^ candidate in prefixes:
+                max_xor = candidate
+                break
+
+    return max_xor
+```
+Time: O(32 * n) = O(n), Space: O(n).
+
+**Alternative — Trie Solution**:
+```python
+class TrieNode:
+    def __init__(self):
+        self.children = {}  # 0 or 1
+
+def find_max_xor_trie(nums: list) -> int:
+    # Build trie of all numbers (bit by bit from MSB)
+    root = TrieNode()
+    for num in nums:
+        node = root
+        for i in range(31, -1, -1):
+            bit = (num >> i) & 1
+            if bit not in node.children:
+                node.children[bit] = TrieNode()
+            node = node.children[bit]
+
+    # For each number, find the number that maximizes XOR
+    max_xor = 0
+    for num in nums:
+        node = root
+        curr_xor = 0
+        for i in range(31, -1, -1):
+            bit = (num >> i) & 1
+            # To maximize XOR, we want the opposite bit
+            want = 1 - bit
+            if want in node.children:
+                curr_xor |= (1 << i)
+                node = node.children[want]
+            else:
+                node = node.children[bit]
+        max_xor = max(max_xor, curr_xor)
+
+    return max_xor
+```
+Time: O(32 * n) = O(n), Space: O(32 * n) = O(n).
+
+**Dry Run (Hash Set)** with `nums = [3, 10, 5, 25, 2, 8]`:
+```
+Binary representations:
+3  = 00011
+10 = 01010
+5  = 00101
+25 = 11001
+2  = 00010
+8  = 01000
+
+Bit 4 (16): mask=10000, prefixes={00000, 00000, 00000, 10000, 00000, 00000} = {0, 16}
+  candidate = 10000 (16). Check: 0 ^ 16 = 16, 16 in prefixes? Yes -> max_xor = 16
+
+Bit 3 (8): mask=11000, prefixes={00000, 01000, 00000, 11000, 00000, 01000} = {0, 8, 24}
+  candidate = 11000 (24). Check: 0 ^ 24 = 24, in prefixes? Yes -> max_xor = 24
+
+Bit 2 (4): mask=11100, prefixes={00000, 01000, 00100, 11000, 00000, 01000} = {0, 8, 4, 24}
+  candidate = 11100 (28). Check: 0^28=28? No. 8^28=20? No. 4^28=24? Yes -> max_xor = 28
+
+Final answer: 28 (from 5 ^ 25 = 00101 ^ 11001 = 11100 = 28)
+```
+
+**Edge Cases**: Array with two elements, all elements the same (XOR = 0), numbers with many leading zeros.
+
+**Follow-up Questions**:
+- Can you do it in O(n) time? (Yes, both approaches above are O(32n) = O(n).)
+- How does the trie approach extend to finding max XOR subarray?
+- What if you need the maximum XOR of k elements instead of 2? (Much harder — Gaussian elimination over GF(2).)
+
+---
+
+### Problem: Find the Shortest Superstring (LC #943) — Hard
+**Companies**: Google, Amazon.
+
+**Problem**: Given an array of strings, find the shortest string that contains each string as a substring. Return any valid answer.
+
+**Brute Force**: Try all permutations of strings, greedily overlapping each pair.
+```python
+def shortest_superstring_brute(words: list) -> str:
+    from itertools import permutations
+
+    def overlap(a, b):
+        """Max overlap: suffix of a that is prefix of b."""
+        for i in range(min(len(a), len(b)), 0, -1):
+            if a.endswith(b[:i]):
+                return i
+        return 0
+
+    def merge_all(perm):
+        result = perm[0]
+        for i in range(1, len(perm)):
+            ov = overlap(result, perm[i])
+            result += perm[i][ov:]
+        return result
+
+    best = None
+    for perm in permutations(words):
+        merged = merge_all(perm)
+        if best is None or len(merged) < len(best):
+            best = merged
+    return best
+```
+Time: O(n! * n * L) where L is max string length. Completely impractical for n > 10.
+
+**Key Insight — Bitmask DP**: This is essentially the Traveling Salesman Problem (TSP). Each "city" is a word. The "distance" from word i to word j is `len(words[j]) - overlap(words[i], words[j])` (the extra characters j adds). We want to visit all cities with minimum total distance.
+
+Use bitmask DP where `dp[mask][i]` = minimum total length when we have used the words in `mask` and the last word is `i`.
+
+**Optimal Solution — Bitmask DP**:
+```python
+def shortest_superstring(words: list) -> str:
+    n = len(words)
+
+    # Precompute overlap[i][j] = max suffix of words[i] matching prefix of words[j]
+    overlap = [[0] * n for _ in range(n)]
+    for i in range(n):
+        for j in range(n):
+            if i == j:
+                continue
+            max_ov = min(len(words[i]), len(words[j]))
+            for k in range(max_ov, 0, -1):
+                if words[i].endswith(words[j][:k]):
+                    overlap[i][j] = k
+                    break
+
+    # dp[mask][i] = min extra chars when words in mask are used, last word is i
+    INF = float('inf')
+    dp = [[INF] * n for _ in range(1 << n)]
+    parent = [[-1] * n for _ in range(1 << n)]
+
+    # Base case: start with each word alone
+    for i in range(n):
+        dp[1 << i][i] = len(words[i])
+
+    # Fill DP
+    for mask in range(1 << n):
+        for last in range(n):
+            if dp[mask][last] == INF:
+                continue
+            if not (mask & (1 << last)):
+                continue
+            for nxt in range(n):
+                if mask & (1 << nxt):
+                    continue  # already used
+                new_mask = mask | (1 << nxt)
+                new_cost = dp[mask][last] + len(words[nxt]) - overlap[last][nxt]
+                if new_cost < dp[new_mask][nxt]:
+                    dp[new_mask][nxt] = new_cost
+                    parent[new_mask][nxt] = last
+
+    # Find the optimal ending word
+    full_mask = (1 << n) - 1
+    best_last = min(range(n), key=lambda i: dp[full_mask][i])
+
+    # Reconstruct the order
+    order = []
+    mask = full_mask
+    last = best_last
+    while last != -1:
+        order.append(last)
+        prev = parent[mask][last]
+        mask ^= (1 << last)
+        last = prev
+    order.reverse()
+
+    # Build the result string
+    result = words[order[0]]
+    for i in range(1, len(order)):
+        ov = overlap[order[i - 1]][order[i]]
+        result += words[order[i]][ov:]
+
+    return result
+```
+Time: O(2^n * n^2 + n^2 * L), Space: O(2^n * n).
+
+This is feasible because n <= 12 in the constraints, so 2^12 * 12^2 = about 590,000 operations.
+
+**Dry Run** with `words = ["abc", "bcd", "cde"]`:
+```
+Overlaps:
+  overlap[0][1] = 2 ("abc" -> "bcd", "bc" overlaps)
+  overlap[1][2] = 2 ("bcd" -> "cde", "cd" overlaps)
+  overlap[0][2] = 1 ("abc" -> "cde", "c" overlaps)
+  overlap[2][0] = 0, overlap[1][0] = 0, overlap[2][1] = 0
+
+Best order: 0 -> 1 -> 2
+  Start with "abc"
+  Add "bcd" with overlap 2: "abc" + "d" = "abcd"
+  Add "cde" with overlap 2: "abcd" + "e" = "abcde"
+
+Result: "abcde" (length 5 vs sum of lengths 9)
+```
+
+**Edge Cases**: Single word, no overlaps between any words, one word is a substring of another (preprocess to remove contained words).
+
+**Follow-up Questions**:
+- What is the time complexity? Why is bitmask DP feasible here?
+- How is this related to TSP? (Same structure — minimum cost Hamiltonian path.)
+- What if n is larger (n > 20)? (Approximate algorithms: greedy overlap, or shortest common supersequence heuristics.)
+
+---
+
+## Bitmask DP — Deeper Explanation
+
+Bitmask DP is one of the most powerful techniques for problems involving subsets of a small set (n <= 20-23).
+
+**Core Idea**: Represent the "set of items chosen so far" as a bitmask (integer). Bit `i` is set if item `i` has been chosen.
+
+**State**: `dp[mask]` = optimal value when the items in `mask` have been processed.
+
+**Transitions**: For each mask, try adding each item not yet in the mask.
+
+```python
+for mask in range(1 << n):
+    for i in range(n):
+        if mask & (1 << i):
+            continue  # already in set
+        new_mask = mask | (1 << i)
+        dp[new_mask] = optimize(dp[new_mask], dp[mask] + cost_of_adding(i, mask))
+```
+
+**When to use**:
+- The problem asks for an optimal ordering or subset of <= 20 items.
+- The cost of adding an item depends on which items have already been chosen.
+- Examples: TSP, scheduling with dependencies, shortest superstring, Hamiltonian path.
+
+**Complexity**: O(2^n * n) states and transitions, times the cost of each transition.
+
+---
+
+## Bit Manipulation in System Design
+
+### Bloom Filters
+A probabilistic data structure that can tell you "definitely not in set" or "probably in set".
+- Uses a bit array of m bits.
+- k hash functions map each element to k positions.
+- Insert: set bits at all k positions.
+- Query: check if all k bits are set. False positives possible, false negatives impossible.
+- Used in: database query optimization, spam filtering, cache checking.
+
+### Feature Flags
+```python
+FEATURE_DARK_MODE = 1 << 0   # bit 0
+FEATURE_NEW_UI    = 1 << 1   # bit 1
+FEATURE_BETA      = 1 << 2   # bit 2
+
+user_features = FEATURE_DARK_MODE | FEATURE_BETA  # bits 0 and 2 set
+
+# Check if user has feature
+if user_features & FEATURE_DARK_MODE:
+    enable_dark_mode()
+
+# Add a feature
+user_features |= FEATURE_NEW_UI
+
+# Remove a feature
+user_features &= ~FEATURE_BETA
+```
+
+### Compact Set Operations
+When the universe is small (< 64 elements), use a single integer as a set:
+```python
+# Union
+a | b
+# Intersection
+a & b
+# Difference
+a & ~b
+# Symmetric difference
+a ^ b
+# Is subset
+(a & b) == a
+# Is empty
+a == 0
+# Size (popcount)
+bin(a).count('1')
+```
+
+---
+
+## Common Mistakes & Interview Tips
+
+### Mistakes to Avoid
+1. **Python's arbitrary precision integers** — Python ints do not overflow, so bit tricks that rely on 32-bit overflow need manual masking (`& 0xFFFFFFFF`).
+2. **Signed vs unsigned confusion** — Be clear about whether the problem expects 32-bit unsigned or signed. Python's `>>` is arithmetic (preserves sign bit); use masking for logical right shift.
+3. **Off-by-one in bit positions** — Bit 0 is the rightmost (least significant). Bit 31 is the leftmost for 32-bit integers.
+4. **Forgetting that `~x` in Python gives `-(x+1)`** — Because Python integers are arbitrary precision, `~5` is `-6`, not the bitwise complement you might expect. Use `x ^ 0xFFFFFFFF` for 32-bit complement.
+5. **Modifying the loop variable** — In Kernighan's algorithm, `n &= n - 1` modifies n. Make sure this is intentional.
+6. **Bitmask DP with n > 23** — 2^23 is about 8 million. Beyond that, bitmask DP becomes too slow.
+
+### Interview Tips
+1. **Know the 10 essential bit tricks by heart** — the ones listed in the cheat sheet above.
+2. **Explain the XOR trick** — When you use XOR to find a unique element, explain WHY it works (associativity and self-cancellation).
+3. **Draw binary representations** — For bit manipulation problems, write out the binary and trace through the operations step by step.
+4. **Mention Kernighan's algorithm by name** — It shows you know the classic techniques.
+5. **For bitmask DP, immediately identify the constraint** — If n <= 20, bitmask DP is likely the intended approach.
+6. **Connect to practical applications** — Mention bloom filters, feature flags, or Unix permissions to show breadth.
+7. **Know the language-specific quirks** — Python's arbitrary precision, Java's `>>>` for unsigned right shift, etc.
+
+---
+
+## Pattern Connections
+
+| Pattern | Connection to Bit Manipulation |
+|---------|-------------------------------|
+| **Math** | Many number theory problems use bit properties (power of 2, GCD with shifts). |
+| **Dynamic Programming** | Bitmask DP is a subset of DP where state is a bitmask. |
+| **Backtracking** | Bitmask enumeration is an alternative to recursive subset generation. |
+| **Trie** | Bit-level tries are used for maximum XOR problems. |
+| **Hash Set** | XOR-based uniqueness detection is an alternative to hash set tracking. |
+| **Greedy** | Building XOR results bit by bit (MSB to LSB) is a greedy strategy. |
+| **System Design** | Bloom filters, feature flags, compact set encoding. |
+
+### Progression Path
+```
+Single Number (136) -> Single Number II (137) -> Single Number III (260)
+Number of 1 Bits (191) -> Counting Bits (338) -> Reverse Bits (190)
+Sum of Two Integers (371) -> Divide Two Integers (29)
+Maximum XOR (421) -> Maximum XOR Subarray (via trie)
+Subsets (78, bitmask approach) -> Shortest Superstring (943, bitmask DP)
+Power of 2 (231) -> Power of 4 (342) -> Bitwise AND of Range (201)
+```
