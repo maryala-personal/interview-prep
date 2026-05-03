@@ -19,6 +19,39 @@ Dynamic programming applies when a problem has two key properties: **optimal sub
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+#### DP vs Commonly Confused Patterns
+
+| Signal in Problem | Likely Pattern | NOT DP Because... |
+|---|---|---|
+| "Minimum coins to make amount" with standard denominations (1,5,10,25) | **Greedy** | Greedy choice property holds: always pick largest coin |
+| "Minimum coins to make amount" with arbitrary denominations (1,3,4) | **DP** | Greedy fails: for amount=6, greedy gives 4+1+1=3 coins, but 3+3=2 coins is optimal |
+| "Generate all valid combinations" | **Backtracking** | Need to enumerate, not count/optimize |
+| "Count the number of ways" with overlapping subproblems | **DP** | Classic DP signal |
+| "Find minimum path sum in grid" | **DP** | Optimal substructure + overlapping subproblems |
+| "Find shortest path in weighted graph" | **Dijkstra/Bellman-Ford** | Graph structure, not sequence/grid DP |
+| "Can this string be segmented?" (with repeated checks) | **DP** | Overlapping subproblems in backtracking |
+| "Compute running sum / range sum quickly" | **Prefix Sum** | No optimization decision; just precomputation |
+
+#### Quick Signals That Point to DP Specifically
+- **"How many ways..."** + input has repeated substructure = DP (not just backtracking)
+- **"Minimum/maximum..."** + decisions affect future choices = DP (not greedy)
+- **"Is it possible to..."** + recursive solution has overlapping subproblems = DP
+- The recurrence involves `min()`, `max()`, or `sum()` over subproblems
+
+#### Common Mistakes: "I thought it was X, but it's actually DP"
+
+1. **Looks like Greedy, but is DP**: *Coin Change (LC #322)* with denominations [1, 3, 4]. Greedy picks 4+1+1=3 coins for amount 6, but optimal is 3+3=2 coins. The greedy choice property fails because picking the largest coin now can force suboptimal choices later.
+
+2. **Looks like Backtracking, but is DP**: *Target Sum (LC #494)*. You might start with backtracking (assign + or - to each number), but notice the recursion tree has massive overlap. Adding memoization transforms it into DP. The tell: you only need the COUNT of ways, not all actual assignments.
+
+3. **Looks like DFS+Memoization, but is actually Prefix Sum**: *Range Sum Query (LC #303)*. You might think about dp[i] = sum of first i elements, but this is simpler -- it is a prefix sum array with no optimization decisions. DP requires making choices; prefix sum is just precomputation.
+
+4. **Looks like DP, but is actually Greedy**: *Jump Game (LC #55)*. A DP solution works (dp[i] = can we reach index i?) but is O(n^2). The key insight is that a simple greedy scan tracking the farthest reachable index gives O(n). The greedy choice property holds: if you can reach index i, you can reach everything before it.
+
+---
+
 ## Core Mechanics
 
 ### Why Does DP Work?
@@ -334,7 +367,7 @@ def climb_stairs(n):
     return prev1
 ```
 
-**Dry Run** with `n = 5`:
+**Dry Run 1** with `n = 5` (standard case):
 ```
 Step 1: 1 way  (just take one step)
 Step 2: 2 ways (1+1 or 2)
@@ -342,6 +375,28 @@ Step 3: prev2=1, prev1=2 -> curr=3 -> [1,2,3]
 Step 4: prev2=2, prev1=3 -> curr=5 -> [1,2,3,5]
 Step 5: prev2=3, prev1=5 -> curr=8 -> [1,2,3,5,8]
 Answer: 8
+```
+
+**Dry Run 2** with `n = 1` (minimum edge case):
+```
+n <= 2, return n = 1.
+Answer: 1 (only one way: take a single step)
+```
+
+**Dry Run 3** with `n = 3` (tricky: reveals WHY the recurrence works):
+```
+Step 1: 1 way  -> {1}
+Step 2: 2 ways -> {1+1, 2}
+Step 3: prev2=1, prev1=2 -> curr=3
+
+Why 3? The paths to step 3 are EXACTLY:
+  - All paths to step 2, each extended by "+1 step": {1+1+1, 2+1}
+  - All paths to step 1, each extended by "+2 steps": {1+2}
+  Total: 2 + 1 = 3. This is WHY dp[n] = dp[n-1] + dp[n-2].
+
+Notice: you cannot reach step 3 by taking 3 single jumps from step 0 directly --
+the recurrence captures all paths through the two possible last-step choices.
+Answer: 3
 ```
 
 **Edge Cases**: `n=1` returns 1, `n=0` returns 1 (one way to stay at ground), negative n is invalid.
@@ -386,7 +441,7 @@ def rob(nums):
     return prev1
 ```
 
-**Dry Run** with `nums = [2, 7, 9, 3, 1]`:
+**Dry Run 1** with `nums = [2, 7, 9, 3, 1]` (standard case):
 ```
 num=2: curr=max(0, 0+2)=2, prev2=0, prev1=2
 num=7: curr=max(2, 0+7)=7, prev2=2, prev1=7
@@ -394,6 +449,41 @@ num=9: curr=max(7, 2+9)=11, prev2=7, prev1=11
 num=3: curr=max(11, 7+3)=11, prev2=11, prev1=11  (skip house with 3)
 num=1: curr=max(11, 11+1)=12, prev2=11, prev1=12
 Answer: 12 (rob houses with 2, 9, 1)
+```
+
+**Dry Run 2** with `nums = [2, 1, 1, 2]` (tricky: greedy "pick the max" fails):
+```
+A greedy approach might pick index 0 (value 2) and index 3 (value 2) = 4.
+But is there a better option? Let's trace DP:
+
+num=2: curr=max(0, 0+2)=2, prev2=0, prev1=2
+num=1: curr=max(2, 0+1)=2, prev2=2, prev1=2  (skip 1, keeping 2)
+num=1: curr=max(2, 2+1)=3, prev2=2, prev1=3  (take 1 at index 2, total=2+1=3)
+num=2: curr=max(3, 2+2)=4, prev2=3, prev1=4
+
+Answer: 4 (rob indices 0 and 3, OR indices 0 and 2 gives 3, so 0+3 is best)
+
+Notice: the DP considers BOTH options at each step. A greedy "always pick
+highest available" would pick 2 (index 0), skip 1, skip 1, pick 2 (index 3) = 4.
+Here greedy happens to match, but consider...
+```
+
+**Dry Run 3** with `nums = [4, 1, 2, 7, 5, 3, 1]` (tricky: non-adjacent constraint forces skipping a tempting large value):
+```
+num=4: curr=max(0,0+4)=4,   prev2=0, prev1=4
+num=1: curr=max(4,0+1)=4,   prev2=4, prev1=4   (skip 1)
+num=2: curr=max(4,4+2)=6,   prev2=4, prev1=6   (take 2, combined with 4)
+num=7: curr=max(6,4+7)=11,  prev2=6, prev1=11  (take 7, combined with earlier 4)
+num=5: curr=max(11,6+5)=11, prev2=11, prev1=11 (skip 5! taking it would mean skipping 7)
+num=3: curr=max(11,11+3)=14, prev2=11, prev1=14 (take 3, combined with 7+4=11)
+num=1: curr=max(14,11+1)=14, prev2=14, prev1=14
+
+Answer: 14 (rob 4, 7, 3 at indices 0, 3, 5)
+
+Notice at step 5 (num=5): even though 5 is large, taking it means giving up 7
+from the previous step. The DP correctly sees that 11 > 6+5=11 (tie, skip).
+This is WHY greedy "pick all large values" fails -- adjacency constraints create
+non-obvious trade-offs.
 ```
 
 **Edge Cases**: Single house (return its value), two houses (return max), all same values, empty array.
@@ -458,7 +548,7 @@ def length_of_lis_optimal(nums):
     return len(tails)
 ```
 
-**Dry Run** with `nums = [10, 9, 2, 5, 3, 7, 101, 18]`:
+**Dry Run 1** with `nums = [10, 9, 2, 5, 3, 7, 101, 18]` (standard case, O(n log n)):
 ```
 O(n log n) approach, tracking tails array:
 num=10:  tails=[] -> pos=0, append -> tails=[10]
@@ -473,6 +563,44 @@ Answer: len(tails) = 4
 ```
 
 Note: `tails` is NOT the actual LIS. It tracks the minimum possible tail for each length.
+
+**Dry Run 2** with `nums = [3, 5, 6, 2, 5, 4, 19, 5, 6, 7, 12]` (tricky: replacing in tails does NOT shorten LIS, it prepares for future extensions):
+```
+num=3:   tails=[3]
+num=5:   tails=[3,5]
+num=6:   tails=[3,5,6]
+num=2:   tails=[2,5,6]        <- replace 3 with 2. LIS length still 3!
+num=5:   tails=[2,5,6]        <- bisect_left finds pos=1 (5==5), no change
+num=4:   tails=[2,4,6]        <- replace 5 with 4
+num=19:  tails=[2,4,6,19]     <- extend to length 4
+num=5:   tails=[2,4,5,19]     <- replace 6 with 5
+num=6:   tails=[2,4,5,6]      <- replace 19 with 6
+num=7:   tails=[2,4,5,6,7]    <- extend to length 5
+num=12:  tails=[2,4,5,6,7,12] <- extend to length 6
+Answer: 6
+
+Notice: when we replaced 3 with 2 at step 4, the LIS length did NOT decrease.
+The replacement made tails[0] smaller, opening the door for future subsequences
+starting with small values. tails=[2,5,6] means "there exists an IS of length 3
+ending with 6, AND there exists an IS of length 1 ending with 2." These may be
+DIFFERENT subsequences -- tails is not one coherent subsequence.
+```
+
+**Dry Run 3** with `nums = [1, 2, 3, 0, 2]` (tricky: a zero resets the beginning but does not destroy existing LIS):
+```
+num=1: tails=[1]
+num=2: tails=[1,2]
+num=3: tails=[1,2,3]       <- LIS of length 3
+num=0: tails=[0,2,3]       <- replace 1 with 0. Length stays 3!
+num=2: tails=[0,2,3]       <- bisect_left(tails,2)=1, tails[1]==2, no change
+Answer: 3
+
+The 0 replaced the first element but did NOT reduce the LIS length.
+This confuses many people: "doesn't 0 break the increasing sequence?"
+No -- tails[0]=0 just means there IS a subsequence of length 1 ending at 0.
+The original LIS [1,2,3] is still valid. The replacement only matters if
+future elements could build a LONGER sequence using 0 as a start.
+```
 
 **Edge Cases**: Array of length 1 (return 1), strictly decreasing array (return 1), all same elements (return 1), already sorted (return n).
 
@@ -540,7 +668,7 @@ def word_break_optimized(s, wordDict):
     return dp[n]
 ```
 
-**Dry Run** with `s = "leetcode"`, `wordDict = ["leet", "code"]`:
+**Dry Run 1** with `s = "leetcode"`, `wordDict = ["leet", "code"]` (standard case):
 ```
 dp = [T, F, F, F, F, F, F, F, F]  (length 9, index 0..8)
 i=1: check s[0:1]="l" -> not in dict. dp[1]=F
@@ -552,6 +680,49 @@ i=6: ... dp[6]=F
 i=7: ... dp[7]=F
 i=8: check j=4: dp[4]=T and s[4:8]="code"->YES -> dp[8]=T
 Answer: True
+```
+
+**Dry Run 2** with `s = "catsandog"`, `wordDict = ["cats","dog","sand","and","cat"]` (tricky: False despite many partial matches):
+```
+dp = [T, F, F, F, F, F, F, F, F, F]  (length 10)
+
+i=3: s[0:3]="cat" -> YES, dp[3]=T
+i=4: s[0:4]="cats" -> YES, dp[4]=T
+i=7: j=4: dp[4]=T, s[4:7]="san" -> no
+     j=3: dp[3]=T, s[3:7]="sand" -> no wait: s[3:7]="sand"? s="catsandog"
+     s[3]='s', so s[3:7]="sand"... but wait, s="c-a-t-s-a-n-d-o-g"
+     s[4:7]="and" -> YES, dp[4]=T -> dp[7]=T
+     Also: j=3: dp[3]=T, s[3:7]="sand" -> YES -> dp[7]=T
+i=9: j=7: dp[7]=T, s[7:9]="og" -> NOT in dict
+     j=4: dp[4]=T, s[4:9]="andog" -> no
+     j=3: dp[3]=T, s[3:9]="sandog" -> no
+     No valid split found!
+
+Answer: False
+
+Notice: even though "cats"+"and" gets us to position 7, the remainder "og"
+is not in the dictionary. And "cat"+"sand" also reaches position 7 with the
+same dead end. The DP correctly identifies that NO combination of dictionary
+words covers the entire string, despite multiple valid partial segmentations.
+```
+
+**Dry Run 3** with `s = "aaaaaaa"`, `wordDict = ["aaaa","aaa"]` (tricky: worst-case overlapping, tests the break optimization):
+```
+dp = [T, F, F, F, F, F, F, F]
+
+i=3: s[0:3]="aaa" -> YES, dp[3]=T (break)
+i=4: s[0:4]="aaaa" -> YES, dp[4]=T (break)
+i=6: j=3: dp[3]=T, s[3:6]="aaa" -> YES, dp[6]=T (break)
+     Also valid: j=2: dp[2]=F, skip. j=4: dp[4]=T, s[4:6]="aa" -> no.
+i=7: j=3: dp[3]=T, s[3:7]="aaaa" -> YES, dp[7]=T (break)
+     Also valid: j=4: dp[4]=T, s[4:7]="aaa" -> YES
+
+Answer: True (aaa+aaaa or aaaa+aaa)
+
+This case has MANY overlapping subproblems. Without the `break` optimization,
+every position checks ALL prior positions. The `break` cuts off early once a
+valid split is found. Without memoization, the brute-force backtracking on
+s="a"*n with dict=["a","aa",...] is O(2^n) -- classic worst case for Word Break.
 ```
 
 **Edge Cases**: Empty string (True), single character in dict, no word matches, overlapping words, repeated words.
@@ -600,7 +771,7 @@ def unique_paths_optimized(m, n):
     return row[n - 1]
 ```
 
-**Dry Run** with `m=3, n=3`:
+**Dry Run 1** with `m=3, n=3` (standard case):
 ```
 Initial:  [1, 1, 1]
           [1, _, _]
@@ -611,6 +782,30 @@ Fill:     [1, 1, 1]
           [1, 3, 6]
 
 Answer: 6
+```
+
+**Dry Run 2** with `m=1, n=5` (edge case: single row):
+```
+Row: [1, 1, 1, 1, 1]
+Answer: 1 (can only move right, exactly one path)
+```
+
+**Dry Run 3** with `m=3, n=4` (tricky: demonstrates how paths accumulate asymmetrically):
+```
+Fill:     [1, 1,  1,  1]
+          [1, 2,  3,  4]
+          [1, 3,  6, 10]
+
+Answer: 10
+
+Notice at cell (2,3): dp[2][3] = dp[1][3] + dp[2][2] = 4 + 6 = 10.
+The 4 paths from above represent all paths that arrive via the rightmost
+column, while the 6 paths from the left represent all paths arriving via
+the bottom row. The grid is NOT symmetric when m != n.
+
+This also equals C(m+n-2, m-1) = C(5, 2) = 10, confirming the combinatorial formula.
+The combinatorial interpretation: you make exactly 2 down-moves and 3 right-moves
+in some order, choosing which 2 of the 5 moves are "down."
 ```
 
 **Edge Cases**: 1x1 grid (1 path), 1xN or Mx1 (1 path), large grids (use modular arithmetic if needed).
@@ -674,7 +869,7 @@ def longest_common_subsequence_optimized(text1, text2):
     return prev[n]
 ```
 
-**Dry Run** with `text1 = "abcde"`, `text2 = "ace"`:
+**Dry Run 1** with `text1 = "abcde"`, `text2 = "ace"` (standard case):
 ```
     ""  a  c  e
 ""   0  0  0  0
@@ -685,6 +880,50 @@ d    0  1  2  2
 e    0  1  2  3
 
 Answer: 3 (LCS = "ace")
+```
+
+**Dry Run 2** with `text1 = "abc"`, `text2 = "def"` (no common characters):
+```
+    ""  d  e  f
+""   0  0  0  0
+a    0  0  0  0
+b    0  0  0  0
+c    0  0  0  0
+
+Answer: 0 (no common subsequence)
+```
+
+**Dry Run 3** with `text1 = "abcba"`, `text2 = "abcba"` (tricky: identical strings, multiple valid LCS):
+```
+    ""  a  b  c  b  a
+""   0  0  0  0  0  0
+a    0  1  1  1  1  1
+b    0  1  2  2  2  2
+c    0  1  2  3  3  3
+b    0  1  2  3  4  4
+a    0  1  2  3  4  5
+
+Answer: 5 (LCS = "abcba" = the entire string)
+
+Now consider text1 = "abcbdab", text2 = "bdcaba" (tricky: multiple LCS of same length):
+
+    ""  b  d  c  a  b  a
+""   0  0  0  0  0  0  0
+a    0  0  0  0  1  1  1
+b    0  1  1  1  1  2  2
+c    0  1  1  2  2  2  2
+b    0  1  1  2  2  3  3
+d    0  1  2  2  2  3  3
+a    0  1  2  2  3  3  4
+b    0  1  2  2  3  4  4
+
+Answer: 4 (one LCS is "bdab", another is "bcba", another is "bcab")
+
+Notice at dp[7][6]=4: there are MULTIPLE longest common subsequences of length 4.
+The DP table only gives the LENGTH. To reconstruct, you backtrack from dp[m][n]:
+when dp[i][j] came from the diagonal (chars matched), include that char;
+when it came from max(left, up), you have a choice -- each choice may lead
+to a different valid LCS. This is why "reconstruct the LCS" is a common follow-up.
 ```
 
 **Edge Cases**: One or both strings empty (0), identical strings (length of either), no common characters (0).
@@ -746,7 +985,7 @@ def min_distance(word1, word2):
     return dp[m][n]
 ```
 
-**Dry Run** with `word1 = "horse"`, `word2 = "ros"`:
+**Dry Run 1** with `word1 = "horse"`, `word2 = "ros"` (standard case):
 ```
       ""  r  o  s
 ""     0  1  2  3
@@ -757,6 +996,40 @@ s      4  3  3  2
 e      5  4  4  3
 
 Answer: 3 (horse -> rorse -> rose -> ros)
+```
+
+**Dry Run 2** with `word1 = "intention"`, `word2 = "execution"` (tricky: shared suffix, tests all three operations):
+```
+         ""  e  x  e  c  u  t  i  o  n
+""        0  1  2  3  4  5  6  7  8  9
+i         1  1  2  3  4  5  6  6  7  8
+n         2  2  2  3  4  5  6  7  7  7
+t         3  3  3  3  4  5  5  6  7  8
+e         4  3  4  3  4  5  6  6  7  8
+n         5  4  4  4  4  5  6  7  7  7
+t         6  5  5  5  5  5  5  6  7  8
+i         7  6  6  6  6  6  6  5  6  7
+o         8  7  7  7  7  7  7  6  5  6
+n         9  8  8  8  8  8  8  7  6  5
+
+Answer: 5
+
+Notice at dp[9][9]=5: the path goes through a mix of replace, insert, and delete.
+At dp[1][1]=1: 'i' != 'e', so we take 1 + min(dp[0][0], dp[0][1], dp[1][0])
+= 1 + min(0, 1, 1) = 1 (replace 'i' with 'e').
+At dp[7][7]=5: 'i' == 'i', match! dp[7][7] = dp[6][6] = 5 (free diagonal step).
+This shows HOW character matches create "free" transitions on the diagonal.
+```
+
+**Dry Run 3** with `word1 = ""`, `word2 = "abc"` (edge case: empty to non-empty):
+```
+      ""  a  b  c
+""     0  1  2  3
+
+Answer: 3 (insert 'a', insert 'b', insert 'c')
+This is the base case: converting empty string to "abc" requires exactly 3 insertions.
+Conversely, "abc" to "" requires 3 deletions. This base case initialization
+(first row and first column) is where many candidates make mistakes.
 ```
 
 **Edge Cases**: Both empty (0), one empty (length of the other), identical strings (0), single character strings.

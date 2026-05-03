@@ -17,6 +17,42 @@
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+#### Tree Traversals vs Commonly Confused Patterns
+
+| Signal | Tree DFS (Recursive) | BFS (Level-Order) | Stack-Based Iterative | Graph DFS/BFS |
+|--------|---------------------|--------------------|-----------------------|---------------|
+| "For each node, compute from children" | **Post-order DFS** | Not natural | Possible but awkward | N/A |
+| "Process level by level" | Possible with depth tracking | **BFS with queue** | Not natural | Same BFS, but need visited set |
+| "Shortest path in unweighted structure" | Not optimal | **BFS** | N/A | **Graph BFS** if cycles |
+| "Validate ordering property" | **Top-down DFS with range** | Can work but less clean | **In-order iterative** | N/A |
+| Input has cycles | N/A (trees are acyclic) | N/A | N/A | **Must use visited set** |
+| Need O(1) space traversal | **Morris traversal** | Not possible | Not possible (O(h) stack) | N/A |
+
+#### Quick Signals That Point to Tree Traversals Specifically
+- Input is a `TreeNode` with `.left` and `.right`
+- "Return values level by level" -- BFS level-order
+- "Compute height, diameter, or path sum" -- post-order DFS
+- "Validate BST" -- in-order traversal or top-down range passing
+- "Serialize / deserialize a tree" -- pre-order DFS with null markers
+- "Lowest common ancestor" -- post-order DFS bubbling results up
+
+#### Common Mistakes: "You might think it is X, but it is actually Y"
+
+1. **"Find shortest path" -- Tree DFS vs Graph BFS**: On a tree, DFS finds the unique path (there is only one path between any two nodes). On a graph, you need BFS for shortest path. Example: **LC 111 Minimum Depth of Binary Tree** can use either DFS or BFS on a tree. But **LC 127 Word Ladder** (a graph shortest-path problem) requires BFS -- DFS would not give the shortest transformation.
+
+2. **"Process nodes in order" -- Iterative Stack vs Recursive DFS**: Both produce the same result. Iterative is NOT a different pattern; it is the same traversal with an explicit stack instead of the call stack. Use iterative when: (a) you fear stack overflow on deep trees, or (b) you need to pause/resume traversal (like BST Iterator LC 173).
+
+3. **"Tree-like structure but with back edges" -- Tree DFS vs Graph DFS**: **LC 207 Course Schedule** has a DAG that looks tree-like but can have cycles. Using tree DFS (without visited tracking) will infinite-loop. You need **graph DFS with visited states** (white/gray/black coloring). The signal: if a node can be reached from multiple parents, it is a graph, not a tree.
+
+#### Problems That LOOK Like Tree Traversals But Are Not
+- **LC 200 Number of Islands** — The grid looks flat, but it is solved with **Graph BFS/DFS** on a 2D grid. Not a tree problem despite using DFS.
+- **LC 133 Clone Graph** — Cloning a graph node-by-node looks like tree traversal, but you need a **visited hashmap** to handle cycles. Tree cloning (no cycles) would not need this.
+- **LC 994 Rotting Oranges** — Level-by-level BFS on a grid. Uses the same queue technique as tree level-order, but it is a **multi-source BFS graph problem**, not a tree problem. The key difference: multiple starting points and a visited grid.
+
+---
+
 ## Core Mechanics
 
 ### Tree Fundamentals

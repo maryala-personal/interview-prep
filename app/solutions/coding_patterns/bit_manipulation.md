@@ -17,6 +17,41 @@
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+#### Bit Manipulation vs Commonly Confused Patterns
+
+| Signal | Bit Manipulation | Math / Number Theory | Hash Map | DP (Bitmask) |
+|--------|-----------------|---------------------|----------|---------------|
+| "Find the unique element" (others appear k times) | **XOR cancellation** | `k*sum(set) - sum(arr)` works for k=2 | HashSet/Counter works but O(n) space | N/A |
+| "Subset enumeration" with n <= 20 | **Bitmask iteration** | N/A | N/A | **Bitmask DP** if optimizing over subsets |
+| "Power of 2" check | **`n & (n-1) == 0`** | `log2(n)` check (float issues) | N/A | N/A |
+| "Count bits" or "manipulate binary" | **Kernighan's / bit tricks** | N/A | N/A | N/A |
+| "Optimal ordering of n <= 20 items" | N/A | N/A | N/A | **Bitmask DP (TSP-style)** |
+| "Add/subtract without arithmetic" | **XOR + AND for carry** | N/A | N/A | N/A |
+
+#### Quick Signals That Point to Bit Manipulation Specifically
+- "Without using extra space" + finding duplicates/unique elements
+- "Every element appears twice except one" (or three times except one)
+- The problem explicitly mentions binary representation, bits, or XOR
+- Constraint says n <= 20 and asks for optimal subset/permutation -- bitmask DP
+- "Do X without using +, -, *, /" operators
+
+#### Common Mistakes: "You might think it is X, but it is actually Y"
+
+1. **"Find the missing number" -- Bit Manipulation vs Math**: **LC 268 Missing Number** can be solved with XOR (XOR all indices and values, missing number remains) OR with math (`n*(n+1)/2 - sum`). Both are O(n) time, O(1) space. XOR is safer (no overflow), but math is more intuitive. The XOR approach is bit manipulation; the sum approach is pure math. Know both.
+
+2. **"Subsets of a set" -- Bitmask vs Backtracking**: **LC 78 Subsets** can be solved with bitmask enumeration (iterate 0 to 2^n - 1, each bit represents include/exclude) or with recursive backtracking. Bitmask is iterative and elegant for n <= 20. Backtracking is more general and works for larger n. If n is small and you need ALL subsets, bitmask is cleaner. If you need to prune, use backtracking.
+
+3. **"Partition into k subsets" -- Bitmask DP vs Regular DP**: **LC 698 Partition to K Equal Sum Subsets** can be solved with bitmask DP (state = which elements are used) or backtracking with pruning. Bitmask DP is O(2^n * n) and works for n <= 20. If n > 20, you must use backtracking. The bitmask DP approach is NOT standard DP -- it is a separate pattern that happens to use memoization.
+
+#### Problems That LOOK Like Bit Manipulation But Are Not
+- **LC 136 Single Number** IS bit manipulation (XOR). But **LC 287 Find the Duplicate Number** (array where one number repeats) looks similar but is solved with **Floyd's Cycle Detection** (linked list pattern) or **binary search on value range**, NOT XOR.
+- **LC 169 Majority Element** can be solved with bit counting (check each bit position, take the majority bit), but the intended approach is **Boyer-Moore Voting** (a math/greedy technique). Bit manipulation works but is O(32n) vs O(n).
+- **LC 1494 Parallel Courses II** has a bitmask DP solution, but it is fundamentally a **graph scheduling / topological sort** problem. The bitmask DP is the optimization technique, not the core pattern.
+
+---
+
 ## Core Mechanics
 
 ### Binary Number Representation

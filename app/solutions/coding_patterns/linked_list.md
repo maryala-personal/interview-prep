@@ -17,6 +17,41 @@
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+#### Linked List vs Commonly Confused Patterns
+
+| Signal | Linked List | Two Pointers (Array) | Stack | Recursion / DFS |
+|--------|-------------|---------------------|-------|-----------------|
+| Data lives in nodes with `next` pointers | **Yes — primary signal** | No, works on contiguous arrays | No, unless simulating stack with list | Could be either |
+| Need O(1) insert/delete in the middle | **Yes** | No (O(n) shift in arrays) | Only at one end | N/A |
+| Detect cycles or find meeting points | **Floyd's slow/fast** | N/A | N/A | Can work but O(n) space |
+| Problem says "reverse" a sequence | **In-place reversal of nodes** | Swap elements in array | Reverse via stack push/pop | Recursive reversal |
+| Need to merge sorted streams | **Merge sorted lists** | Merge sorted arrays (easier) | N/A | N/A |
+| Need O(1) lookup + O(1) eviction | **DLL + HashMap (LRU)** | N/A | N/A | N/A |
+
+#### Quick Signals That Point to Linked List Specifically
+- The input is explicitly a `ListNode` with `.next` pointers
+- "Do it in-place without extra space" + node reordering
+- "Detect a cycle" or "find intersection point"
+- "Design a cache with O(1) get and put" (LRU/LFU)
+- "Merge k sorted lists" (not arrays)
+
+#### Common Mistakes: "You might think it is X, but it is actually Y"
+
+1. **"Reverse a sequence" -- Stack vs Linked List**: If the input is an array or string, use a stack or two pointers. If the input is a linked list, use in-place reversal with prev/curr/next. Example: **LC 344 Reverse String** looks similar to **LC 206 Reverse Linked List**, but Reverse String is a two-pointer swap on an array, not a linked list reversal.
+
+2. **"Find the middle element" -- Binary Search vs Slow/Fast**: If you have an array with random access, use `arr[len//2]` in O(1). If you have a linked list (no random access), use slow/fast pointers. Example: **LC 876 Middle of the Linked List** requires slow/fast, but finding the middle of a sorted array for binary search is just index arithmetic.
+
+3. **"Flatten a nested structure" -- Recursion/Stack vs Linked List**: **LC 430 Flatten a Multilevel Doubly Linked List** looks like a tree DFS problem, but the answer is linked list pointer manipulation. Contrast with **LC 341 Flatten Nested List Iterator**, which is solved with a stack/recursion on nested lists (no pointer rewiring).
+
+#### Problems That LOOK Like Linked List But Are Not
+- **LC 234 Palindrome Linked List** — Looks like pure linked list, but the core insight is "find middle + reverse second half + compare" which is really the **Runner (Two Pointer)** technique composed with reversal.
+- **LC 155 Min Stack** — You might think "stack = linked list" but the real pattern is **augmented stack** (storing min alongside each element). No linked list manipulation needed.
+- **LC 20 Valid Parentheses** — Uses a stack data structure but has nothing to do with linked list node manipulation. Pure **Stack** pattern.
+
+---
+
 ## Core Mechanics
 
 ### Why Linked Lists Work the Way They Do
@@ -255,7 +290,7 @@ def reverse_list_recursive(head: ListNode) -> ListNode:
 ```
 Time: O(n), Space: O(n) call stack.
 
-**Dry Run** with `1 -> 2 -> 3 -> None`:
+**Dry Run 1** with `1 -> 2 -> 3 -> None` (basic case):
 ```
 Step 0: prev=None, curr=1
 Step 1: next_node=2, 1->None, prev=1, curr=2
@@ -263,6 +298,23 @@ Step 2: next_node=3, 2->1, prev=2, curr=3
 Step 3: next_node=None, 3->2, prev=3, curr=None
 Return prev=3: 3 -> 2 -> 1 -> None
 ```
+
+**Dry Run 2** with `7 -> None` (single node -- tricky edge case):
+```
+Step 0: prev=None, curr=7
+Step 1: next_node=None, 7->None (already points to None!), prev=7, curr=None
+Return prev=7: 7 -> None
+```
+**Aha moment**: A single node does NOT need special handling. The loop body executes once, sets `7.next = prev = None` (unchanged), and advances. The general algorithm handles this edge case for free -- this is why we do NOT need `if not head.next: return head` as a special case in the iterative version (though we do need it in the recursive version).
+
+**Dry Run 3** with `5 -> 9 -> None` (two nodes -- verifies pointer order):
+```
+Step 0: prev=None, curr=5
+Step 1: next_node=9, 5->None, prev=5, curr=9
+Step 2: next_node=None, 9->5, prev=9, curr=None
+Return prev=9: 9 -> 5 -> None
+```
+**Why this matters**: Two-node reversal is the minimal case where something actually changes. If you get the order of the four operations wrong (e.g., advance `curr` before saving `next_node`), this test case catches it immediately.
 
 **Edge Cases**: Empty list (return None), single node (return node), two nodes.
 
@@ -307,13 +359,41 @@ def has_cycle(head: ListNode) -> bool:
 ```
 Time: O(n), Space: O(1).
 
-**Dry Run** with `1 -> 2 -> 3 -> 4 -> 2 (cycle back to node 2)`:
+**Dry Run 1** with `1 -> 2 -> 3 -> 4 -> 2 (cycle back to node 2)`:
 ```
 Step 0: slow=1, fast=1
 Step 1: slow=2, fast=3
 Step 2: slow=3, fast=2 (fast went 4->2 via cycle)
 Step 3: slow=4, fast=4 => slow == fast, return True
 ```
+
+**Dry Run 2** with `1 -> 2 -> None` (no cycle -- tricky: verify termination):
+```
+Step 0: slow=1, fast=1
+Step 1: slow=2, fast=None (fast went 1->2->None, then fast.next.next: fast=2, fast.next=None)
+Wait: fast=1 initially. fast.next=2, fast.next.next=None. So fast moves to None? No:
+  After step 1: slow=2, fast=2.next.next -- but we check `fast and fast.next` first.
+  Actually: slow=1.next=2, fast=1.next.next=3? No, there is no 3.
+
+Let me redo carefully:
+  fast=1. Check: fast(=1) is not None, fast.next(=2) is not None. Enter loop.
+  slow = 1.next = 2
+  fast = 1.next.next = 2.next = None
+  Check slow==fast? 2 == None? No.
+  Check loop: fast(=None) is None. Exit loop.
+  Return False.
+```
+**Aha moment**: The condition `while fast and fast.next` is critical. If you only check `while fast.next`, you will get a NullPointerError when fast itself is None. The two checks handle both odd-length (fast lands on last node, fast.next is None) and even-length (fast lands on None) termination.
+
+**Dry Run 3** with `1 -> 1 (self-loop, single node pointing to itself)`:
+```
+Step 0: slow=1, fast=1
+Step 1: Check fast(=1) not None, fast.next(=1) not None. Enter loop.
+  slow = 1.next = 1 (same node!)
+  fast = 1.next.next = 1.next = 1 (same node!)
+  slow == fast? Yes -> return True
+```
+**Aha moment**: A self-loop is the smallest possible cycle. Both pointers immediately return to the same node. The algorithm detects it in a single iteration. This edge case is commonly forgotten but the algorithm handles it naturally.
 
 **Finding the cycle start (LC #142)**:
 After slow and fast meet, reset one pointer to head. Move both one step at a time. Where they meet is the cycle start.

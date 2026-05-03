@@ -35,6 +35,35 @@ Union-Find is the right tool when you see these signals in an interview problem:
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+**Union-Find vs DFS/BFS for Connected Components vs Graph Algorithms**
+
+| Signal in Problem | Union-Find | DFS/BFS | Graph (Dijkstra/etc.) |
+|---|---|---|---|
+| "Find number of connected components" | Works, but overkill if static | Best for one-time static query | Overkill |
+| "Are X and Y connected?" after adding edges | Best choice -- O(alpha(n)) per query | Must rebuild O(V+E) each time | Not applicable |
+| "Find the redundant edge" | Natural cycle detection | DFS back-edge detection works too | Not applicable |
+| "Shortest path between nodes" | Cannot do this | BFS for unweighted | Dijkstra for weighted |
+| "Process edges one at a time, answer queries" | Best choice -- online processing | Must rebuild graph each time | Depends on query type |
+| "Equivalence classes / transitive closure" | Natural fit | DFS/BFS also works | Overkill |
+
+**Quick signals pointing specifically to Union-Find:**
+- The word "connect" or "merge" appears with dynamic/incremental operations
+- You are given edges as a list (not an adjacency matrix/list) and need to process them one at a time
+- You need to count components as edges are added/removed
+- "Redundant" or "extra" edge -- cycle detection on edge list
+
+**Common mistakes -- "You might think X, but it is actually Y":**
+
+1. **LC 200 (Number of Islands) -- Looks like Union-Find, but DFS/BFS is simpler.** The grid is static (no dynamic additions). DFS flood-fill is cleaner and just as fast. Union-Find works but requires mapping 2D coords to 1D, which adds unnecessary complexity. Use Union-Find only when islands change dynamically (LC 305).
+
+2. **LC 743 (Network Delay Time) -- Looks like a connectivity problem, but it is shortest path.** You might think "are all nodes reachable?" which sounds like Union-Find, but the problem asks for the maximum shortest-path distance. That requires Dijkstra, not Union-Find.
+
+3. **LC 547 (Number of Provinces) -- Could be Union-Find OR DFS.** Given an adjacency matrix (not edge list), DFS is more natural. Union-Find works but you must iterate through the matrix to extract edges first. If the interviewer asks "what if friendships are added over time?", then switch to Union-Find.
+
+---
+
 ## Complexity Analysis Deep Dive
 
 **Time complexity of Union-Find with both optimizations:**
@@ -357,7 +386,7 @@ def countComponents(n: int, edges: list[list[int]]) -> int:
     return uf.count
 ```
 
-**Dry Run:**
+**Dry Run 1 (Basic):**
 ```
 n = 5, edges = [[0,1], [1,2], [3,4]]
 
@@ -377,6 +406,56 @@ Process edge [3,4]:
   parent: [0, 0, 0, 3, 3], count = 2
 
 Result: 2 components → {0,1,2} and {3,4}
+```
+
+**Dry Run 2 (Tricky -- duplicate and redundant edges):**
+```
+n = 4, edges = [[0,1], [1,2], [0,2], [2,3], [1,3]]
+
+Initial: parent = [0, 1, 2, 3], count = 4
+
+Process [0,1]: find(0)=0, find(1)=1 → union. parent=[0,0,2,3], count=3
+Process [1,2]: find(1)=0, find(2)=2 → union. parent=[0,0,0,3], count=2
+Process [0,2]: find(0)=0, find(2)=0 → SAME root! union returns False.
+               count stays 2. ← AHA: this edge is redundant, already connected
+Process [2,3]: find(2)=0, find(3)=3 → union. parent=[0,0,0,0], count=1
+Process [1,3]: find(1)=0, find(3)=0 → SAME! union returns False. count=1
+
+Result: 1 component. Two edges were redundant.
+
+Key insight: The order edges are processed matters for the parent tree shape,
+but NOT for the final component count. Any spanning tree of the same graph
+produces count=1 regardless of edge processing order.
+```
+
+**Dry Run 3 (Tricky -- path compression in action):**
+```
+n = 5, edges = [[0,1], [1,2], [2,3], [3,4]]
+
+This creates a chain: 0-1-2-3-4. Without path compression, find(4) walks
+the entire chain. Let us trace what path compression does.
+
+Process [0,1]: parent=[0,0,2,3,4], rank=[1,0,0,0,0]
+Process [1,2]: find(1)→parent[1]=0, return 0. find(2)=2. Union.
+  parent=[0,0,0,3,4], rank=[1,0,0,0,0]
+Process [2,3]: find(2)→parent[2]=0, return 0. find(3)=3. Union.
+  parent=[0,0,0,0,4], rank=[1,0,0,0,0]
+Process [3,4]: find(3)→parent[3]=0, return 0. find(4)=4. Union.
+  parent=[0,0,0,0,0], rank=[1,0,0,0,0]
+
+Now call find(4):
+  parent[4]=0, parent[0]=0 → return 0 (only 1 hop!)
+  Path compression already flattened everything because union by rank
+  attached each new node directly under root 0.
+
+But what if we had NOT used union by rank (naive union)?
+  Chain: parent=[0,0,1,2,3] (each points to previous)
+  find(4): 4→3→2→1→0 (4 hops!)
+  After path compression: parent=[0,0,0,0,0] (all point to root)
+  find(4) again: 4→0 (1 hop)
+
+This shows why BOTH optimizations matter: rank prevents deep trees,
+compression flattens them further.
 ```
 
 **Edge Cases:**
@@ -448,7 +527,7 @@ def findRedundantConnection(edges: list[list[int]]) -> list[int]:
     return []  # Should not reach here per problem constraints
 ```
 
-**Dry Run:**
+**Dry Run 1 (Basic -- triangle):**
 ```
 edges = [[1,2], [1,3], [2,3]]
 
@@ -457,6 +536,39 @@ Process [1,3]: find(1)=1, find(3)=3 → different, union them
 Process [2,3]: find(2)=1, find(3)=1 → SAME! This is redundant.
 
 Return [2,3]
+```
+
+**Dry Run 2 (Tricky -- long chain, cycle closes late):**
+```
+edges = [[1,2], [2,3], [3,4], [4,5], [1,5]]
+
+Process [1,2]: union(1,2). Components: {1,2},{3},{4},{5}
+Process [2,3]: union(2,3). Components: {1,2,3},{4},{5}
+Process [3,4]: union(3,4). Components: {1,2,3,4},{5}
+Process [4,5]: union(4,5). Components: {1,2,3,4,5}
+Process [1,5]: find(1)=1, find(5)=1 → SAME! Return [1,5].
+
+AHA moment: The cycle is 1-2-3-4-5-1, but we detect it at the LAST edge
+that closes the cycle, not at the first. This is why the problem says
+"return the edge that occurs last in the input" -- Union-Find naturally
+gives us this behavior because we process edges in order.
+```
+
+**Dry Run 3 (Tricky -- "last" edge matters when multiple edges form cycle):**
+```
+edges = [[1,4], [1,2], [2,3], [3,4]]
+
+Process [1,4]: union(1,4). Components: {1,4},{2},{3}
+Process [1,2]: union(1,2). Components: {1,2,4},{3}
+Process [2,3]: union(2,3). Components: {1,2,3,4}
+Process [3,4]: find(3)=1, find(4)=1 → SAME! Return [3,4].
+
+But wait -- the cycle is 1-2-3-4-1. If we had processed edges differently
+(e.g., [1,2],[2,3],[3,4],[1,4]), the answer would be [1,4] instead.
+The redundant edge depends on the INPUT ORDER, not the graph structure.
+Any of {[1,4],[1,2],[2,3],[3,4]} could be the "redundant" one --
+the problem defines "redundant" as the last one that creates a cycle
+in processing order.
 ```
 
 **Edge Cases:**
@@ -528,7 +640,7 @@ def accountsMerge(accounts: list[list[str]]) -> list[list[str]]:
     return result
 ```
 
-**Dry Run:**
+**Dry Run 1 (Basic -- transitive merge):**
 ```
 accounts = [
     ["John", "john@a.com", "john@b.com"],
@@ -548,6 +660,63 @@ Step 3:
   root 3 → [mary@a.com]
 
 Result: [["John", "john@a.com", "john@b.com", "john@c.com"], ["Mary", "mary@a.com"]]
+```
+
+**Dry Run 2 (Tricky -- same name, different people; different names, same person):**
+```
+accounts = [
+    ["John", "a@x.com"],
+    ["John", "b@x.com"],
+    ["Jane", "a@x.com", "c@x.com"]
+]
+
+Step 1: email_to_id = {a@x: 0, b@x: 1, c@x: 2}
+        email_to_name = {a@x: "Jane", b@x: "John", c@x: "Jane"}
+        (Note: "Jane" overwrites "John" for a@x.com because Jane's account
+         is processed last)
+
+Step 2:
+  Account 0 ("John", a@x): single email, no union
+  Account 1 ("John", b@x): single email, no union
+  Account 2 ("Jane", a@x, c@x): union(0, 2) → {a@x, c@x} merged
+
+Step 3:
+  root 0 → [a@x.com, c@x.com] → name = email_to_name["a@x.com"] = "Jane"
+  root 1 → [b@x.com] → name = email_to_name["b@x.com"] = "John"
+
+Result: [["Jane", "a@x.com", "c@x.com"], ["John", "b@x.com"]]
+
+AHA moment: Even though two accounts have name "John", they are DIFFERENT
+people because they share no emails. Meanwhile, "John" (account 0) and
+"Jane" (account 2) share "a@x.com", so they merge -- but the name
+comes from the email_to_name mapping. The problem guarantees that
+accounts sharing an email belong to the same person (same name).
+In real implementations, the name should be consistent.
+```
+
+**Dry Run 3 (Tricky -- long transitive chain across 4 accounts):**
+```
+accounts = [
+    ["Bob", "e1", "e2"],
+    ["Bob", "e3", "e4"],
+    ["Bob", "e2", "e3"],
+    ["Bob", "e5"]
+]
+
+email_to_id: {e1:0, e2:1, e3:2, e4:3, e5:4}
+
+Account 0: union(0, 1) → {e1,e2}
+Account 1: union(2, 3) → {e3,e4}
+Account 2: union(1, 2) → find(1)=0, find(2)=2 → union → {e1,e2,e3,e4}
+Account 3: single email e5, no union
+
+Result: [["Bob","e1","e2","e3","e4"], ["Bob","e5"]]
+
+AHA moment: Accounts 0 and 1 initially appear separate ({e1,e2} and {e3,e4}).
+Account 2 acts as a BRIDGE connecting them via e2-e3. Without account 2,
+they would remain separate. This is the transitive closure property
+that makes Union-Find the right choice -- DFS/BFS would also work but
+Union-Find handles this incrementally.
 ```
 
 **Edge Cases:**
