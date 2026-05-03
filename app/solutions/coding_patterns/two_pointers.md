@@ -15,6 +15,32 @@
 - You need the shortest subarray/substring satisfying a condition -- that is sliding window
 - The search space is not linear or the elements lack a monotonic relationship
 
+### ⚡ Pattern Overlap & Decision Guide
+
+| Signal in Problem | Two Pointers | Sliding Window | Binary Search |
+|---|---|---|---|
+| "Sorted array" + "pair/triplet summing to X" | **YES** | No | Sometimes (can binary search for complement) |
+| "Contiguous subarray/substring" + condition | No | **YES** | No |
+| "Minimum/maximum value satisfying condition" | No | No | **YES** (binary search on answer) |
+| "In-place" + O(1) space + remove/partition | **YES** | No | No |
+| "Sorted array" + "find element" | No | No | **YES** |
+| "Container/area between boundaries" | **YES** | No | No |
+
+**Quick signals pointing to Two Pointers specifically:**
+- Problem says "sorted array" + "two numbers that sum to" -- Two Pointers (not hash map, since sorted gives O(1) space)
+- Problem says "in-place" or "O(1) extra space" + modify array -- same-direction Two Pointers
+- Problem involves "palindrome" or "comparing from both ends" -- converging Two Pointers
+- Problem says "triplet" or "quadruplet" -- fix outer elements + converging Two Pointers
+
+**Common mistakes -- "Looks like X but is actually Y":**
+1. **"Longest substring without repeating characters"** -- You might think Two Pointers because there are two indices moving right. But it is actually **Sliding Window** because you are tracking a contiguous substring with a validity condition (no repeats). Two Pointers typically converge from both ends or work on sorted data.
+2. **"Find the pair with sum closest to target in unsorted array"** -- You might try Two Pointers directly, but you must **sort first**. If the problem needs original indices, Two Pointers will not work -- use a **Hash Map** instead.
+3. **"Find first position of target in sorted array"** -- Sorted array makes you think Two Pointers, but since you are searching for a specific value (not a pair), this is **Binary Search**.
+
+**Two Pointers vs Sliding Window:** Both use left/right indices. Use Two Pointers when you are converging from both ends of a sorted structure or moving a slow/fast pointer for in-place modifications. Use Sliding Window when you are expanding/contracting a contiguous window with a validity condition.
+
+**Two Pointers vs Binary Search:** Both exploit sorted order. Use Two Pointers when you need to find a pair/triplet (two elements working together). Use Binary Search when you need to find a single element or boundary in the search space.
+
 ## Core Mechanics
 
 The two-pointer technique works because of one core insight: **in a sorted array, moving a pointer in one direction monotonically changes the value, letting you eliminate entire regions of the search space in O(1) time per step.**
@@ -205,13 +231,50 @@ def twoSum(numbers, target):
     return [-1, -1]
 ```
 
-**Dry Run:**
+**Dry Run 1 (Basic):**
 ```
 Input: numbers = [2, 7, 11, 15], target = 9
 
 Step 1: left=0 (val=2), right=3 (val=15), sum=17 > 9 -> move right
 Step 2: left=0 (val=2), right=2 (val=11), sum=13 > 9 -> move right
 Step 3: left=0 (val=2), right=1 (val=7),  sum=9 == 9 -> FOUND! Return [1, 2]
+```
+
+**Dry Run 2 (Tricky -- answer requires both pointers to move):**
+```
+Input: numbers = [1, 2, 3, 4, 4, 9, 56, 90], target = 8
+
+Step 1: left=0 (val=1), right=7 (val=90), sum=91 > 8  -> move right
+Step 2: left=0 (val=1), right=6 (val=56), sum=57 > 8  -> move right
+Step 3: left=0 (val=1), right=5 (val=9),  sum=10 > 8  -> move right
+Step 4: left=0 (val=1), right=4 (val=4),  sum=5  < 8  -> move left
+Step 5: left=1 (val=2), right=4 (val=4),  sum=6  < 8  -> move left
+Step 6: left=2 (val=3), right=4 (val=4),  sum=7  < 8  -> move left
+Step 7: left=3 (val=4), right=4 (val=4),  sum=8 == 8  -> FOUND! Return [4, 5]
+
+Notice: The answer requires BOTH pointers to move. The right pointer overshoots
+past the answer initially (skipping 9, 56, 90), then the left pointer catches up.
+This shows why the invariant matters -- the answer pair [4, 4] was always within
+[left, right] at every step.
+```
+
+**Dry Run 3 (Tricky -- duplicate values with target requiring same value twice):**
+```
+Input: numbers = [1, 3, 3, 3, 5], target = 6
+
+Step 1: left=0 (val=1), right=4 (val=5), sum=6 == 6 -> FOUND! Return [1, 5]
+
+But what if target = 6 and we need 3+3?
+Input: numbers = [1, 3, 3, 3, 5], target = 6 (looking for 3+3)
+
+Wait -- the above already found 1+5=6. The problem guarantees exactly one solution,
+so this input would not have target=6 asking for 3+3.
+
+Instead consider: numbers = [3, 3, 3, 3], target = 6
+Step 1: left=0 (val=3), right=3 (val=3), sum=6 == 6 -> FOUND! Return [1, 4]
+
+Key insight: Even with all duplicates, left and right are at DIFFERENT indices,
+so we correctly find a valid pair. The algorithm never compares an element with itself.
 ```
 
 **Edge Cases:**
@@ -290,7 +353,7 @@ def threeSum(nums):
     return result
 ```
 
-**Dry Run:**
+**Dry Run 1 (Standard):**
 ```
 Input: nums = [-1, 0, 1, 2, -1, -4]
 After sort: [-4, -1, -1, 0, 1, 2]
@@ -317,6 +380,74 @@ i=3, nums[i]=0 > 0? No (0 is not > 0)
   L=4, R=4, done
 
 Result: [[-1,-1,2], [-1,0,1]]
+```
+
+**Dry Run 2 (Tricky -- heavy duplicates, tests duplicate skipping at EVERY level):**
+```
+Input: nums = [-2, -2, -2, 0, 0, 1, 1, 3, 3]
+After sort: [-2, -2, -2, 0, 0, 1, 1, 3, 3]  (already sorted)
+
+i=0, nums[i]=-2
+  L=1(-2), R=8(3), sum=-2+(-2)+3=-1 < 0 -> L++
+  L=2(-2), R=8(3), sum=-2+(-2)+3=-1 < 0 -> L++
+  L=3(0),  R=8(3), sum=-2+0+3=1 > 0 -> R--
+  L=3(0),  R=7(3), sum=-2+0+3=1 > 0 -> R--
+  L=3(0),  R=6(1), sum=-2+0+1=-1 < 0 -> L++
+  L=4(0),  R=6(1), sum=-2+0+1=-1 < 0 -> L++
+  L=5(1),  R=6(1), sum=-2+1+1=0 == 0 -> FOUND [-2,1,1]
+    skip dup L: nums[5]=nums[6]=1, L=6
+    skip dup R: R=5
+    L=6 >= R=5, done
+
+i=1, nums[1]=-2 == nums[0]=-2, SKIP
+i=2, nums[2]=-2 == nums[1]=-2, SKIP
+
+i=3, nums[i]=0
+  L=4(0), R=8(3), sum=0+0+3=3 > 0 -> R--
+  L=4(0), R=7(3), sum=0+0+3=3 > 0 -> R--
+  L=4(0), R=6(1), sum=0+0+1=1 > 0 -> R--
+  L=4(0), R=5(1), sum=0+0+1=1 > 0 -> R--
+  L=4, R=4, done
+
+i=4, nums[4]=0 == nums[3]=0, SKIP
+i=5, nums[5]=1 > 0, BREAK (early termination)
+
+Result: [[-2,1,1]]
+
+Notice: Without duplicate skipping at i, we would process i=0,1,2 all with
+nums[i]=-2 and find [-2,1,1] three times. The duplicate skip at the outer loop
+is critical. Also notice the early termination: once nums[i] > 0, no three
+positive numbers can sum to 0.
+```
+
+**Dry Run 3 (Tricky -- multiple valid triplets found within one fixed i):**
+```
+Input: nums = [-3, -1, 0, 1, 2, 4]
+After sort: [-3, -1, 0, 1, 2, 4]
+
+i=0, nums[i]=-3, need L+R=3
+  L=1(-1), R=5(4), sum=-1+4=3 == 3 -> FOUND [-3,-1,4]
+    L=2, R=4
+  L=2(0),  R=4(2), sum=0+2=2 < 3 -> L++
+  L=3(1),  R=4(2), sum=1+2=3 == 3 -> FOUND [-3,1,2]
+    L=4, R=3, done
+
+i=1, nums[i]=-1, need L+R=1
+  L=2(0), R=5(4), sum=0+4=4 > 1 -> R--
+  L=2(0), R=4(2), sum=0+2=2 > 1 -> R--
+  L=2(0), R=3(1), sum=0+1=1 == 1 -> FOUND [-1,0,1]
+    L=3, R=2, done
+
+i=2, nums[i]=0, need L+R=0
+  L=3(1), R=5(4), sum=5 > 0 -> R--
+  ... eventually L >= R, done.
+
+Result: [[-3,-1,4], [-3,1,2], [-1,0,1]]
+
+Key insight: When i=0, we find TWO valid triplets in a single pass of the inner
+two-pointer loop. After finding [-3,-1,4], both pointers move inward and
+discover [-3,1,2]. This shows that finding one answer does NOT mean we should
+stop -- we must continue the inner loop.
 ```
 
 **Edge Cases:**
@@ -377,7 +508,7 @@ def maxArea(height):
     return max_water
 ```
 
-**Dry Run:**
+**Dry Run 1 (Standard):**
 ```
 Input: height = [1, 8, 6, 2, 5, 4, 8, 3, 7]
 
@@ -391,6 +522,51 @@ Step 7: L=1(h=8), R=3(h=2), area=min(8,2)*2=4,   max=49, 8>2 -> R--
 Step 8: L=1(h=8), R=2(h=6), area=min(8,6)*1=6,   max=49, L+1>=R, done
 
 Answer: 49
+```
+
+**Dry Run 2 (Tricky -- optimal is NOT the widest container):**
+```
+Input: height = [1, 1, 1, 1, 1, 100, 100, 1, 1, 1]
+
+Step 1:  L=0(h=1),   R=9(h=1),   area=min(1,1)*9=9,   max=9,   1==1 -> R--
+Step 2:  L=0(h=1),   R=8(h=1),   area=min(1,1)*8=8,   max=9,   1==1 -> R--
+Step 3:  L=0(h=1),   R=7(h=1),   area=min(1,1)*7=7,   max=9,   1==1 -> R--
+Step 4:  L=0(h=1),   R=6(h=100), area=min(1,100)*6=6,  max=9,  1<100 -> L++
+Step 5:  L=1(h=1),   R=6(h=100), area=min(1,100)*5=5,  max=9,  1<100 -> L++
+Step 6:  L=2(h=1),   R=6(h=100), area=min(1,100)*4=4,  max=9,  1<100 -> L++
+Step 7:  L=3(h=1),   R=6(h=100), area=min(1,100)*3=3,  max=9,  1<100 -> L++
+Step 8:  L=4(h=1),   R=6(h=100), area=min(1,100)*2=2,  max=9,  1<100 -> L++
+Step 9:  L=5(h=100), R=6(h=100), area=min(100,100)*1=100, max=100, done
+
+Answer: 100
+
+Notice: The widest container (indices 0,9) has area 9. The optimal container
+(indices 5,6) has width 1 but height 100, giving area 100. The algorithm
+correctly narrows past all the short lines to eventually pair the two tall ones.
+This is counterintuitive -- the narrowest possible container is the best one!
+```
+
+**Dry Run 3 (Tricky -- equal heights and the tie-breaking rule):**
+```
+Input: height = [5, 2, 5, 2, 5]
+
+Step 1: L=0(h=5), R=4(h=5), area=min(5,5)*4=20, max=20, 5==5 -> R-- (tie: move right)
+Step 2: L=0(h=5), R=3(h=2), area=min(5,2)*3=6,  max=20, 5>2  -> R--
+Step 3: L=0(h=5), R=2(h=5), area=min(5,5)*2=10, max=20, 5==5 -> R--
+Step 4: L=0(h=5), R=1(h=2), area=min(5,2)*1=2,  max=20, done
+
+Answer: 20
+
+But what if we moved LEFT on ties instead?
+Step 1: L=0(h=5), R=4(h=5), area=20, move L -> L=1
+Step 2: L=1(h=2), R=4(h=5), area=6,  move L -> L=2
+Step 3: L=2(h=5), R=4(h=5), area=10, move R -> R=3
+Step 4: L=2(h=5), R=3(h=2), area=2,  done.
+
+Answer: 20 -- same result! When heights are equal, moving either pointer is safe.
+The proof: if h[L]==h[R], every container involving EITHER L or R as one boundary
+has area <= h[L]*(R-L) = the current area (already computed). So both can be
+safely discarded.
 ```
 
 **Edge Cases:**
@@ -489,7 +665,7 @@ def trap(height):
 
 **Why `left_max - height[left]` works when `left_max < right_max`:** The water level at position `left` is `min(left_max, actual_right_max_for_this_position)`. We know `actual_right_max >= right_max >= left_max` (because right_max only increases as we move inward, and actual_right_max includes right_max). So `min(left_max, actual_right_max) = left_max`. The water trapped is `left_max - height[left]`.
 
-**Dry Run:**
+**Dry Run 1 (Standard):**
 ```
 Input: height = [0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]
 
@@ -507,6 +683,53 @@ L=0, R=11, lmax=0, rmax=1
   L=6, R=7, lmax(2) < rmax(3): L++ -> L=7, L>=R, done
 
 Answer: 6
+```
+
+**Dry Run 2 (Tricky -- pointer side switches multiple times):**
+```
+Input: height = [4, 1, 3, 0, 2, 5]
+
+L=0, R=5, lmax=4, rmax=5
+
+  lmax(4) < rmax(5): L++ -> L=1, lmax=max(4,1)=4, water+=4-1=3, total=3
+  lmax(4) < rmax(5): L++ -> L=2, lmax=max(4,3)=4, water+=4-3=1, total=4
+  lmax(4) < rmax(5): L++ -> L=3, lmax=max(4,0)=4, water+=4-0=4, total=8
+  lmax(4) < rmax(5): L++ -> L=4, lmax=max(4,2)=4, water+=4-2=2, total=10
+  L=4, R=5, L++ -> L=5, L>=R, done
+
+Answer: 10
+
+Key insight: The right pointer NEVER moved! Because rmax(5) > lmax(4) throughout,
+the algorithm processes exclusively from the left. This happens when one end is
+much taller than the other. The invariant guarantees correctness: since rmax >= 5
+at all times, the actual right max for any left position is at least 5, so
+min(lmax, actual_rmax) = lmax = 4 for all positions.
+```
+
+**Dry Run 3 (Tricky -- zero water trapped despite varied heights):**
+```
+Input: height = [5, 4, 3, 2, 1]
+
+L=0, R=4, lmax=5, rmax=1
+
+  lmax(5) >= rmax(1): R-- -> R=3, rmax=max(1,2)=2, water+=2-2=0, total=0
+  lmax(5) >= rmax(2): R-- -> R=2, rmax=max(2,3)=3, water+=3-3=0, total=0
+  lmax(5) >= rmax(3): R-- -> R=1, rmax=max(3,4)=4, water+=4-4=0, total=0
+  L=0, R=1, L>=R after next, done
+
+Answer: 0
+
+Notice: Despite having heights [5,4,3,2,1], NO water is trapped because it is
+monotonically decreasing -- water would just flow off the right side. At each
+step, the new position IS the new rmax, so water added is always rmax - height = 0.
+Now contrast with [5, 1, 4, 1, 3]:
+  L=0, R=4, lmax=5, rmax=3
+  rmax(3) < lmax(5): R-- -> R=3, rmax=max(3,1)=3, water+=3-1=2, total=2
+  rmax(3) < lmax(5): R-- -> R=2, rmax=max(3,4)=4, water+=4-4=0, total=2
+  rmax(4) < lmax(5): R-- -> R=1, rmax=max(4,1)=4, water+=4-1=3, total=5
+  done. Answer: 5
+
+The non-monotonic arrangement creates "valleys" that trap water.
 ```
 
 **Edge Cases:**
@@ -599,7 +822,7 @@ def fourSum(nums, target):
     return result
 ```
 
-**Dry Run:**
+**Dry Run 1 (Standard):**
 ```
 Input: nums = [1, 0, -1, 0, -2, 2], target = 0
 After sort: [-2, -1, 0, 0, 1, 2]
@@ -628,6 +851,80 @@ i=1, nums[1]=-1
 i=2, nums[2]=0, min sum=0+0+1+2=3 > 0, BREAK
 
 Result: [[-2,-1,1,2], [-2,0,0,2], [-1,0,0,1]]
+```
+
+**Dry Run 2 (Tricky -- pruning eliminates entire branches):**
+```
+Input: nums = [1, 2, 3, 4, 5, 6, 7, 8], target = 6
+After sort: [1, 2, 3, 4, 5, 6, 7, 8]
+
+i=0, nums[0]=1
+  Min possible sum = 1+2+3+4 = 10 > 6, BREAK!
+
+Result: [] (empty)
+
+Key insight: The min-sum pruning immediately terminates the search. Without
+pruning, we would try all combinations only to find none works. The pruning
+condition nums[i]+nums[i+1]+nums[i+2]+nums[i+3] > target saves massive work.
+
+Now contrast with target = 10:
+i=0, nums[0]=1
+  Min sum = 1+2+3+4 = 10 == 10. Does not break (condition is >, not >=).
+  Max sum = 1+6+7+8 = 22 >= 10. Does not skip.
+  j=1, nums[1]=2, need L+R = 10-1-2 = 7
+    L=2(3), R=7(8), s=1+2+3+8=14 > 10 -> R--
+    L=2(3), R=6(7), s=1+2+3+7=13 > 10 -> R--
+    L=2(3), R=5(6), s=1+2+3+6=12 > 10 -> R--
+    L=2(3), R=4(5), s=1+2+3+5=11 > 10 -> R--
+    L=2(3), R=3(4), s=1+2+3+4=10 == 10 -> FOUND [1,2,3,4]!
+    ...continues...
+
+This shows how pruning's effectiveness depends on the target relative to array values.
+```
+
+**Dry Run 3 (Tricky -- non-zero target with negative numbers, multi-level duplicate skipping):**
+```
+Input: nums = [-3, -3, -2, 0, 0, 2, 3, 3], target = 0
+After sort: [-3, -3, -2, 0, 0, 2, 3, 3]
+
+i=0, nums[0]=-3
+  j=1, nums[1]=-3, need L+R = 0-(-3)-(-3) = 6
+    L=2(-2), R=7(3), s=-3-3-2+3=-5 < 0 -> L++
+    L=3(0), R=7(3), s=-3-3+0+3=-3 < 0 -> L++
+    L=4(0), R=7(3), s=-3-3+0+3=-3 < 0 -> L++
+    L=5(2), R=7(3), s=-3-3+2+3=-1 < 0 -> L++
+    L=6(3), R=7(3), s=-3-3+3+3=0 == 0 -> FOUND [-3,-3,3,3]
+    skip dup: L=7, R=6, done
+
+  j=2, nums[2]=-2, need L+R = 0-(-3)-(-2) = 5
+    L=3(0), R=7(3), s=-3-2+0+3=-2 < 0 -> L++
+    L=4(0), R=7(3), s=-3-2+0+3=-2 < 0 -> L++
+    L=5(2), R=7(3), s=-3-2+2+3=0 == 0 -> FOUND [-3,-2,2,3]
+    skip dup L: no dup. skip dup R: nums[7]=nums[6]=3, R=6. L=6, R=5, done.
+
+  j=3, nums[3]=0, need L+R = 0-(-3)-0 = 3
+    L=4(0), R=7(3), s=-3+0+0+3=0 == 0 -> FOUND [-3,0,0,3]
+    skip dup: L=5, R=6
+    L=5(2), R=6(3), s=-3+0+2+3=2 > 0 -> R--
+    L=5, R=5, done
+
+  j=4, nums[4]=0 == nums[3]=0, SKIP
+
+i=1, nums[1]=-3 == nums[0]=-3, SKIP
+
+i=2, nums[2]=-2
+  j=3, nums[3]=0, need L+R = 0-(-2)-0 = 2
+    L=4(0), R=7(3), s=-2+0+0+3=1 < 0? No, 1 > 0 -> R--
+    L=4(0), R=6(3), s=-2+0+0+3=1 > 0 -> R--
+    L=4(0), R=5(2), s=-2+0+0+2=0 == 0 -> FOUND [-2,0,0,2]
+    L=5, R=4, done.
+  ...
+
+Result: [[-3,-3,3,3], [-3,-2,2,3], [-3,0,0,3], [-2,0,0,2]]
+
+Notice the multi-level duplicate skipping: i=1 is skipped because nums[1]==nums[0],
+and within i=0, j=4 is skipped because nums[4]==nums[3]. The duplicate skip logic
+at EVERY level (i, j, L, R) is what makes this problem difficult.
 ```
 
 **Edge Cases:**

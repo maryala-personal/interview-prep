@@ -17,6 +17,41 @@
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+#### Design vs Commonly Confused Patterns
+
+| Signal | Design (Combine DS) | Hash Map Alone | Linked List Alone | Heap Alone | Stack Alone |
+|--------|---------------------|----------------|-------------------|------------|-------------|
+| "O(1) get + O(1) eviction by recency" | **HashMap + DLL (LRU)** | O(1) get but no eviction order | O(1) eviction but O(n) lookup | N/A | N/A |
+| "O(1) insert + O(1) delete + O(1) random" | **HashMap + Array** | O(1) insert/delete but no random | N/A | N/A | N/A |
+| "O(1) push + O(1) getMin" | N/A | N/A | N/A | Heap gives O(log n) getMin | **Augmented Stack** |
+| "Pop most frequent element" | **Freq Map + Freq Stacks** | Tracks frequency but no stack order | N/A | Heap gives O(log n) pop | Stack gives order but no freq |
+| "Get value at timestamp T" | **HashMap + Binary Search** | HashMap for key but no time query | N/A | N/A | N/A |
+| "O(1) inc + O(1) getMax + O(1) getMin" | **HashMap + DLL of buckets** | O(1) inc but O(n) getMax | DLL gives O(1) max/min but O(n) lookup | O(log n) for inc/getMax | N/A |
+
+#### Quick Signals That Point to Design Pattern Specifically
+- "Design a data structure that supports..." with multiple O(1) operations
+- "Implement a cache" (LRU, LFU, time-based)
+- "Insert, delete, AND getRandom all in O(1)"
+- "Implement class with these methods" and the complexity constraints force combining structures
+- Multiple operations with conflicting data structure requirements (e.g., O(1) lookup AND O(1) ordered eviction)
+
+#### Common Mistakes: "You might think it is X, but it is actually Y"
+
+1. **"Implement a stack with getMin" -- Design vs Simple Stack**: **LC 155 Min Stack** looks like a design problem requiring combined data structures, but it is actually solvable with a single **augmented stack** (each entry stores value and current min). No need for a separate data structure. Contrast with **LC 146 LRU Cache** which genuinely requires TWO data structures (HashMap + DLL).
+
+2. **"Design a News Feed" -- Design vs Merge K Sorted Lists**: **LC 355 Design Twitter** looks like a pure design problem, but `getNewsFeed` is fundamentally a **Merge K Sorted Lists** problem (merge each user's timeline using a heap). Recognizing the underlying algorithmic pattern is key -- the "design" wrapper hides a classic algorithm.
+
+3. **"Find median from data stream" -- Design vs Heap**: **LC 295 Find Median from Data Stream** looks like a custom data structure design, but it is a **Two-Heap** pattern problem (max-heap for lower half, min-heap for upper half). The "design" framing is a red herring -- the core insight is the heap partitioning strategy, not combining arbitrary data structures.
+
+#### Problems That LOOK Like Design But Are Not
+- **LC 232 Implement Queue using Stacks** — Looks like a design problem, but it is really about understanding **amortized analysis** of two stacks simulating a queue. No hashmap or complex data structure combination needed.
+- **LC 208 Implement Trie** — Labeled as design, but it is fundamentally a **Trie** data structure implementation. The "design" aspect is straightforward -- there is no need to combine two structures.
+- **LC 588 Design In-Memory File System** — Despite the "design" label, the core is a **Trie** (tree of directory nodes). The hashmap of children at each node is just how tries work, not a "combine two structures" insight.
+
+---
+
 ## Core Mechanics
 
 ### The "Combine Two Data Structures" Meta-Pattern

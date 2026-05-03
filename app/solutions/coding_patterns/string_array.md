@@ -17,6 +17,43 @@
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+#### String/Array vs Commonly Confused Patterns
+
+| Signal | String/Array (this pattern) | Hash Map | Two Pointers | Sliding Window | Stack | Sorting |
+|--------|---------------------------|----------|-------------- |----------------|-------|---------|
+| "Group by equivalence" (anagrams) | **Frequency key** | HashMap to group | N/A | N/A | N/A | Sorted key alternative |
+| "Find palindrome" | **Expand around center** | N/A | **Two-pointer from ends** | N/A | N/A | N/A |
+| "Minimum window containing X" | N/A | Track char counts | N/A | **Sliding window** | N/A | N/A |
+| "Evaluate expression" | **Calculator parsing** | N/A | N/A | N/A | **Operator stack** | N/A |
+| "Product except self" | **Prefix/suffix two-pass** | N/A | N/A | N/A | N/A | N/A |
+| "Format text to width" | **Greedy packing** | N/A | N/A | N/A | N/A | N/A |
+| "Encode/decode strings" | **Length-prefix protocol** | N/A | N/A | N/A | N/A | N/A |
+
+#### Quick Signals That Point to String/Array Specifically
+- "Group anagrams" or "check if two strings are anagrams" -- frequency hashing
+- "Longest palindromic substring" -- expand around center
+- "Evaluate expression with +, -, *, /" -- stack-based calculator
+- "Product of array except self" -- prefix/suffix decomposition
+- "Encode a list of strings into one string" -- length-prefix encoding
+- "Justify text to a fixed width" -- greedy packing + space distribution
+
+#### Common Mistakes: "You might think it is X, but it is actually Y"
+
+1. **"Find all anagrams in a string" -- String/Array vs Sliding Window**: **LC 438 Find All Anagrams in a String** looks like an anagram grouping problem (String/Array), but the optimal solution is a **Sliding Window** with a frequency counter. The key difference: LC 49 Group Anagrams is about grouping separate strings (hash map), while LC 438 is about finding substrings of fixed length in a single string (sliding window).
+
+2. **"Longest substring without repeating characters" -- String vs Sliding Window**: **LC 3 Longest Substring Without Repeating Characters** is NOT a string manipulation problem -- it is a **Sliding Window** problem. The string is just the input format. The core technique is expand-right/shrink-left with a set tracking characters in the window.
+
+3. **"Trapping Rain Water" -- Prefix/Suffix vs Two Pointers vs Stack**: **LC 42 Trapping Rain Water** can be solved with prefix/suffix arrays (String/Array pattern: compute left_max and right_max arrays), two pointers (O(1) space), or a monotonic stack. All three are valid. The prefix/suffix approach is the easiest to understand; the two-pointer approach is the most space-efficient.
+
+#### Problems That LOOK Like String/Array But Are Not
+- **LC 76 Minimum Window Substring** is listed in this guide but is fundamentally a **Sliding Window** problem. It uses character frequency tracking (String/Array technique) within a sliding window framework.
+- **LC 5 Longest Palindromic Substring** uses expand-around-center (String/Array), but **LC 516 Longest Palindromic Subsequence** is a **Dynamic Programming** problem (2D DP on the string). "Substring" vs "subsequence" completely changes the pattern.
+- **LC 56 Merge Intervals** involves arrays but is solved by **Sorting + Greedy merge**, not by any string/array-specific technique. The sorting step is the key insight.
+
+---
+
 ## Core Mechanics
 
 ### Hashing Patterns for String Matching

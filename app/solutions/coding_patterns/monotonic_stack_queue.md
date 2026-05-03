@@ -24,6 +24,38 @@ The brute force for "next greater element" is O(n^2) — for each element, scan 
 
 ---
 
+### ⚡ Pattern Overlap & Decision Guide
+
+**Monotonic Stack/Queue vs Two Pointers vs Sliding Window vs Regular Stack**
+
+| Signal in Problem | Monotonic Stack | Two Pointers | Sliding Window | Regular Stack |
+|---|---|---|---|---|
+| "Next greater/smaller element" | Best choice | Not applicable | Not applicable | Works but O(n^2) |
+| "Sliding window max/min" | Monotonic Deque -- O(n) | Not applicable | Heap -- O(n log k) | Not applicable |
+| "Trapping rain water" | Works (layer by layer) | Best for O(1) space | Not applicable | Not applicable |
+| "Largest rectangle in histogram" | Best choice | Not applicable | Not applicable | Not applicable |
+| "Balanced parentheses / matching" | Not applicable | Not applicable | Not applicable | Best choice |
+| "Subarray sum / product" | Not applicable | May work | Sliding window | Not applicable |
+| "Stock span / price range" | Best choice | Not applicable | Not applicable | Not applicable |
+
+**Quick signals pointing specifically to Monotonic Stack:**
+- "For each element, find the nearest larger/smaller element in a direction"
+- "Largest rectangle" or "maximal area" with height constraints
+- "How many days until warmer/colder" (distance to next greater/smaller)
+- The brute force is O(n^2) nested loops where inner loop scans for a boundary
+
+**Common mistakes -- "You might think X, but it is actually Y":**
+
+1. **LC 11 (Container With Most Water) -- Looks like monotonic stack, but it is Two Pointers.** You see bars and water, which screams "histogram" or "trapping rain water." But this problem maximizes area between two lines (not trapped water between bars). The two-pointer approach from outside-in is optimal. Monotonic stack does not help here.
+
+2. **LC 209 (Minimum Size Subarray Sum) -- Looks like it needs a stack for boundaries, but it is Sliding Window.** The subarray constraint with a sum target is a sliding window problem. Monotonic stack finds "nearest greater/smaller," not "subarray with target sum."
+
+3. **LC 20 (Valid Parentheses) -- Uses a stack, but NOT a monotonic stack.** The stack here does matching/pairing, not ordering. There is no monotonic invariant. Do not confuse "uses a stack" with "monotonic stack pattern."
+
+4. **LC 862 (Shortest Subarray with Sum at Least K) -- Looks like sliding window, but requires Monotonic Deque.** Negative numbers break the sliding window invariant. A monotonic deque on prefix sums is needed. This is one of the trickiest overlaps between patterns.
+
+---
+
 ## Core Mechanics
 
 ### Monotonic Decreasing Stack (for "Next Greater Element")
@@ -339,7 +371,7 @@ def nextGreaterElement(nums1: list[int], nums2: list[int]) -> list[int]:
     return [next_greater[num] for num in nums1]
 ```
 
-**Dry Run:**
+**Dry Run 1 (Basic):**
 ```
 nums1 = [4,1,2], nums2 = [1,3,4,2]
 
@@ -352,6 +384,46 @@ Processing nums2:
 Remaining: next_greater[4]=-1, next_greater[2]=-1
 
 Lookup nums1: [next_greater[4], next_greater[1], next_greater[2]] = [-1, 3, -1]
+```
+
+**Dry Run 2 (Tricky -- strictly decreasing nums2, all answers are -1):**
+```
+nums1 = [4,2], nums2 = [5,4,3,2,1]
+
+Processing nums2:
+  5: push. Stack: [5]
+  4: 4<5, push. Stack: [5,4]
+  3: 3<4, push. Stack: [5,4,3]
+  2: 2<3, push. Stack: [5,4,3,2]
+  1: 1<2, push. Stack: [5,4,3,2,1]
+
+No pops ever happen! Every element stays on the stack → all get -1.
+Result: [-1, -1]
+
+AHA moment: In a strictly decreasing array, every element is already
+"the greatest so far." No element ever finds a next greater, so the
+stack just accumulates. This is the worst case for stack space: O(n).
+```
+
+**Dry Run 3 (Tricky -- nums1 element whose next greater is far away):**
+```
+nums1 = [2], nums2 = [2,1,1,1,1,3]
+
+Processing nums2:
+  2: push. Stack: [2]
+  1: 1<2, push. Stack: [2,1]
+  1: 1=1, push. Stack: [2,1,1]
+  1: 1=1, push. Stack: [2,1,1,1]
+  1: 1=1, push. Stack: [2,1,1,1,1]
+  3: 3>1, pop→next_greater[1]=3. (repeat for all 1s and 2)
+     3>1,pop. 3>1,pop. 3>1,pop. 3>2,pop→next_greater[2]=3. Push 3.
+
+Result: next_greater[2]=3.
+
+AHA moment: Element 2 had to "wait" through four 1s before finding
+its next greater. The stack accumulated 5 elements before the big
+pop cascade. This shows the amortized O(n): the cascade of pops
+is paid for by the pushes that preceded it.
 ```
 
 **Edge Cases:**
@@ -412,6 +484,47 @@ i=7 (73): 73<76. Push 7. Stack: [6,7]
 Remaining: answer[6]=0, answer[7]=0
 
 answer = [1, 1, 4, 2, 1, 1, 0, 0]
+```
+
+**Dry Run 2 (Tricky -- plateau followed by spike):**
+```
+temps = [70, 70, 70, 70, 75]
+
+i=0 (70): Push 0. Stack: [0]
+i=1 (70): 70 is NOT > 70 (we use strict >). Push 1. Stack: [0,1]
+i=2 (70): Not > 70. Push 2. Stack: [0,1,2]
+i=3 (70): Not > 70. Push 3. Stack: [0,1,2,3]
+i=4 (75): 75>70, pop 3→answer[3]=1.
+          75>70, pop 2→answer[2]=2.
+          75>70, pop 1→answer[1]=3.
+          75>70, pop 0→answer[0]=4.
+          Push 4. Stack: [4]
+
+answer = [4, 3, 2, 1, 0]
+
+AHA moment: Equal temperatures do NOT pop the stack! The condition is
+strictly greater (>), not greater-or-equal (>=). If we used >=, day 1
+would "answer" day 0, giving answer[0]=1, which is WRONG because
+70 is not warmer than 70. This strict-vs-non-strict distinction is
+a common source of bugs.
+```
+
+**Dry Run 3 (Tricky -- temperature goes up, down, then up higher):**
+```
+temps = [60, 80, 50, 90]
+
+i=0 (60): Push 0. Stack: [0]
+i=1 (80): 80>60, pop 0→answer[0]=1. Push 1. Stack: [1]
+i=2 (50): 50<80. Push 2. Stack: [1,2]
+i=3 (90): 90>50, pop 2→answer[2]=1.
+          90>80, pop 1→answer[1]=2. Push 3. Stack: [3]
+
+answer = [1, 2, 1, 0]
+
+AHA moment: Day 1 (80) has answer=2, not 1. Even though day 2 exists,
+50 < 80 so day 2 is not warmer. Day 1 must wait until day 3 (90).
+The stack correctly holds day 1 while day 2 comes and goes. Day 2
+gets answered immediately by day 3, but day 1 had to wait longer.
 ```
 
 **Edge Cases:**
@@ -486,6 +599,49 @@ i=6 (h=0): 0<3, pop 5. h=3, w=6-4-1=1. Area=3.
             0<1, pop 1. h=1, w=6 (stack empty). Area=6.
 
 max_area = 10 (height 5, width 2, spanning indices 2-3)
+```
+
+**Dry Run 2 (Tricky -- all bars same height):**
+```
+heights = [3, 3, 3, 3] + [0] (sentinel)
+
+i=0 (3): Push 0. Stack: [0]
+i=1 (3): 3 is NOT < 3 (we pop when current < top). Push 1. Stack: [0,1]
+i=2 (3): Push 2. Stack: [0,1,2]
+i=3 (3): Push 3. Stack: [0,1,2,3]
+i=4 (0): 0<3, pop 3. h=3, w=4-2-1=1. Area=3.
+         0<3, pop 2. h=3, w=4-1-1=2. Area=6.
+         0<3, pop 1. h=3, w=4-0-1=3. Area=9.
+         0<3, pop 0. h=3, w=4 (stack empty). Area=12.
+
+max_area = 12 = 3 * 4
+
+AHA moment: No pops happen until the sentinel! All bars accumulate
+on the stack because equal heights do NOT trigger pops (< not <=).
+The sentinel forces all bars out. When a bar is popped with an empty
+stack, its width extends to the ENTIRE left side (w=i), meaning it
+was the smallest bar across the whole histogram. This is the key case
+where the "stack empty → w=i" rule matters.
+```
+
+**Dry Run 3 (Tricky -- V-shape where answer involves non-adjacent bars):**
+```
+heights = [4, 1, 4] + [0]
+
+i=0 (4): Push 0. Stack: [0]
+i=1 (1): 1<4, pop 0. h=4, w=1. Area=4. Push 1. Stack: [1]
+i=2 (4): Push 2. Stack: [1,2]
+i=3 (0): 0<4, pop 2. h=4, w=3-1-1=1. Area=4.
+         0<1, pop 1. h=1, w=3. Area=3.
+
+max_area = 4
+
+AHA moment: The two bars of height 4 are separated by height 1, so
+you CANNOT form a rectangle of height 4 spanning width 3. Each bar
+of height 4 only contributes area 4 (4*1). The height-1 bar spans
+the full width (3) but only contributes area 3. The algorithm correctly
+computes each bar's maximal rectangle based on where shorter bars
+actually are, not where tall bars are.
 ```
 
 **Edge Cases:**
